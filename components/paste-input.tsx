@@ -18,14 +18,17 @@ export function PasteInput({ onSubmit, isLoading }: PasteInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const { theme } = useTheme();
-  const isDark = theme === "dark";
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const timer = setTimeout(() => {
       inputRef.current?.focus();
     }, 800);
     return () => clearTimeout(timer);
   }, []);
+
+  const isDark = mounted && theme === "dark";
 
   // Slow down video to 80% speed
   const handleVideoReady = useCallback((el: HTMLVideoElement | null) => {
