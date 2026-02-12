@@ -18,17 +18,21 @@ export function PasteInput({ onSubmit, isLoading }: PasteInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const { theme } = useTheme();
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     const timer = setTimeout(() => {
       inputRef.current?.focus();
     }, 800);
     return () => clearTimeout(timer);
   }, []);
 
-  const isDark = mounted && theme === "dark";
+  // Replay video from start whenever theme changes
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [theme]);
 
   // Slow down video to 80% speed
   const handleVideoReady = useCallback((el: HTMLVideoElement | null) => {
@@ -58,11 +62,8 @@ export function PasteInput({ onSubmit, isLoading }: PasteInputProps) {
       exit={{ opacity: 0, y: -40, scale: 0.98 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
     >
-      {/* Background video — always in DOM to avoid hydration mismatch, visibility via CSS */}
-      <div
-        className="absolute inset-0 z-0 transition-opacity duration-1000"
-        style={{ opacity: isDark ? 1 : 0, pointerEvents: isDark ? "auto" : "none" }}
-      >
+      {/* Background video — always visible, replays on theme switch */}
+      <div className="absolute inset-0 z-0">
         <video
           ref={handleVideoReady}
           autoPlay
@@ -71,7 +72,7 @@ export function PasteInput({ onSubmit, isLoading }: PasteInputProps) {
           className="h-full w-full object-cover"
           src="/book-animation.mp4"
         />
-        {/* Dark overlay — 90% opaque */}
+        {/* Overlay — 90% opaque, uses theme background for tinting */}
         <div className="absolute inset-0 bg-background/90" />
       </div>
 
