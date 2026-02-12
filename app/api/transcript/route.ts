@@ -39,8 +39,10 @@ function decodeEntities(text: string): string {
     .replace(/\n/g, " ");
 }
 
-const UA =
+const BROWSER_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+const ANDROID_UA =
+  "com.google.android.youtube/19.09.37 (Linux; U; Android 11) gzip";
 
 // ─── Caption types & parsers ───────────────────────────────
 
@@ -164,11 +166,11 @@ async function getPageSession(videoId: string): Promise<PageSession> {
 
   const res = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
     headers: {
-      "User-Agent": UA,
+      "User-Agent": BROWSER_UA,
       "Accept-Language": "en-US,en;q=0.9",
       Accept:
         "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      Cookie: "CONSENT=PENDING+987",
+      Cookie: "CONSENT=YES+cb.20210328-17-p0.en+FX+634",
     },
     redirect: "follow",
   });
@@ -263,8 +265,7 @@ async function fetchTracksViaInnertube(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "User-Agent": UA,
-        Cookie: session.cookies,
+        "User-Agent": ANDROID_UA,
         "X-YouTube-Client-Name": "3",
         "X-YouTube-Client-Version": "19.09.37",
       },
@@ -335,7 +336,7 @@ async function fetchTracksViaWebInnertube(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "User-Agent": UA,
+        "User-Agent": BROWSER_UA,
         Cookie: session.cookies,
       },
       body: JSON.stringify(body),
@@ -367,15 +368,15 @@ async function fetchTracksViaWebInnertube(
 
 async function fetchCaptionXml(
   track: CaptionTrack,
-  session: PageSession
+  session: PageSession,
+  userAgent: string = BROWSER_UA
 ): Promise<string> {
   const url = track.baseUrl.replace(/&fmt=\w+/, "");
-  console.log("[v0] Fetching caption XML, lang =", track.languageCode);
+  console.log("[v0] Fetching caption XML, lang =", track.languageCode, "ua =", userAgent.slice(0, 30));
 
   const res = await fetch(url, {
     headers: {
-      "User-Agent": UA,
-      Cookie: session.cookies,
+      "User-Agent": userAgent,
     },
   });
 
@@ -397,36 +398,53 @@ async function fetchTranscript(
 ): Promise<{ entries: CaptionEntry[]; language: string }> {
   const session = await getPageSession(videoId);
 
-  // Try strategies in order: HTML → ANDROID → WEB
-  const strategies = [
-    () => extractTracksFromHtml(session.html),
-    () => fetchTracksViaInnertube(videoId, session),
-    () => fetchTracksViaWebInnertube(videoId, session),
+  // Try strategies in order: ANDROID (most reliable) → HTML → WEB
+  // Each strategy returns tracks + the UA to use for fetching captions
+  const strategies: Array<{
+    name: string;
+    getTracks: () => Promise<CaptionTrack[] | null> | CaptionTrack[] | null;
+    ua: string;
+  }> = [
+    {
+      name: "ANDROID Innertube",
+      getTracks: () => fetchTracksViaInnertube(videoId, session),
+      ua: ANDROID_UA,
+    },
+    {
+      name: "HTML extraction",
+      getTracks: () => extractTracksFromHtml(session.html),
+      ua: BROWSER_UA,
+    },
+    {
+      name: "WEB Innertube",
+      getTracks: () => fetchTracksViaWebInnertube(videoId, session),
+      ua: BROWSER_UA,
+    },
   ];
 
-  for (let i = 0; i < strategies.length; i++) {
-    const tracks = await strategies[i]();
+  for (const strategy of strategies) {
+    const tracks = await strategy.getTracks();
     if (!tracks) continue;
 
     const track = pickTrack(tracks, lang);
-    console.log("[v0] Using track from strategy", i + 1, ":", track.languageCode);
+    console.log("[v0] Using track from", strategy.name, ":", track.languageCode);
 
     try {
-      const xml = await fetchCaptionXml(track, session);
+      const xml = await fetchCaptionXml(track, session, strategy.ua);
       const entries = parseCaptions(xml);
       console.log("[v0] Parsed", entries.length, "entries");
 
       if (entries.length > 0) {
         return { entries, language: track.languageCode };
       }
-      console.log("[v0] Strategy", i + 1, "returned XML but 0 parsed entries, trying next...");
+      console.log("[v0]", strategy.name, "returned XML but 0 parsed entries, trying next...");
     } catch (e) {
       console.log(
-        "[v0] Strategy",
-        i + 1,
+        "[v0]",
+        strategy.name,
         "caption fetch failed:",
         e instanceof Error ? e.message : e,
-        "— trying next..."
+        "- trying next..."
       );
     }
   }
