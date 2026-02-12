@@ -18,6 +18,7 @@ interface TranscriptData {
     text: string;
   }[];
   totalSegments: number;
+  language?: string;
 }
 
 export default function Home() {
@@ -32,20 +33,14 @@ export default function Home() {
     setErrorMessage("");
 
     try {
-      console.log("[v0] Fetching transcript for URL:", url);
       const res = await fetch(
         `/api/transcript?url=${encodeURIComponent(url)}`
       );
-      console.log("[v0] Response status:", res.status);
       const data = await res.json();
-      console.log("[v0] Response data:", JSON.stringify(data).slice(0, 500));
 
       if (!res.ok) {
-        console.log("[v0] Error response - full data:", JSON.stringify(data));
         throw new Error(data.error || "Failed to fetch transcript");
       }
-
-      console.log("[v0] Success! Paragraphs:", data.paragraphs?.length, "Title:", data.title);
 
       // Small delay to let the loading animation feel intentional
       await new Promise((resolve) => setTimeout(resolve, 800));
@@ -53,7 +48,6 @@ export default function Home() {
       setTranscriptData(data);
       setState("reading");
     } catch (err) {
-      console.error("[v0] Catch block error:", err);
       setErrorMessage(
         err instanceof Error
           ? err.message

@@ -13,7 +13,9 @@ import {
   Type,
   Scroll,
   BookOpenCheck,
+  Globe,
 } from "lucide-react";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 
 interface Paragraph {
   timestamp: string;
@@ -26,6 +28,7 @@ interface TranscriptData {
   title: string;
   paragraphs: Paragraph[];
   totalSegments: number;
+  language?: string;
 }
 
 interface TranscriptReaderProps {
@@ -139,6 +142,20 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
           </motion.button>
 
           <div className="flex items-center gap-1">
+            <ThemeSwitcher />
+
+            <div className="mx-1 h-4 w-px bg-border" />
+
+            {data.language && data.language !== "en" && (
+              <>
+                <span className="flex h-7 items-center gap-1 rounded-md bg-accent px-2 text-xs text-muted-foreground">
+                  <Globe className="h-3 w-3" />
+                  {data.language.toUpperCase()}
+                </span>
+                <div className="mx-1 h-4 w-px bg-border" />
+              </>
+            )}
+
             <motion.button
               onClick={() =>
                 setFontSize((s) => Math.min(2, s + 1))

@@ -13,24 +13,21 @@ function extractVideoId(url: string): string | null {
     const match = url.match(pattern);
     if (match) return match[1];
   }
-  const urlMatch = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
-  if (urlMatch) return urlMatch[1];
   if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
   return null;
 }
 
 function formatTimestamp(seconds: number): string {
-  const totalSeconds = Math.floor(seconds);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const secs = totalSeconds % 60;
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  }
-  return `${minutes}:${secs.toString().padStart(2, "0")}`;
+  const s = Math.floor(seconds);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0)
+    return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
-function decodeHtmlEntities(text: string): string {
+function decodeEntities(text: string): string {
   return text
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
@@ -38,9 +35,14 @@ function decodeHtmlEntities(text: string): string {
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/&apos;/g, "'")
-    .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num)))
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(parseInt(n)))
     .replace(/\n/g, " ");
 }
+
+const UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+
+// ─── Caption entry ─────────────────────────────────────────
 
 interface CaptionEntry {
   text: string;
@@ -48,93 +50,51 @@ interface CaptionEntry {
   duration: number;
 }
 
-/**
- * Parse standard timedtext XML (<text start="" dur="">)
- */
-function parseStandardXml(xml: string): CaptionEntry[] {
+// Parse srv3 XML:  <p t="ms" d="ms">text or <s>word</s> children</p>
+function parseSrv3(xml: string): CaptionEntry[] {
   const entries: CaptionEntry[] = [];
-  const regex =
-    /<text start="([^"]*)" dur="([^"]*)"[^>]*>([\s\S]*?)<\/text>/g;
-  let match;
-  while ((match = regex.exec(xml)) !== null) {
-    const start = parseFloat(match[1]);
-    const dur = parseFloat(match[2]);
-    const text = decodeHtmlEntities(match[3].replace(/<[^>]+>/g, "").trim());
+  const re = /<p\s+t="(\d+)"\s+d="(\d+)"[^>]*>([\s\S]*?)<\/p>/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(xml)) !== null) {
+    const text = decodeEntities(m[3].replace(/<[^>]+>/g, "").trim());
     if (text) {
-      entries.push({ text, start, duration: dur });
+      entries.push({
+        text,
+        start: parseInt(m[1]) / 1000,
+        duration: parseInt(m[2]) / 1000,
+      });
     }
   }
   return entries;
 }
 
-/**
- * Parse srv3 XML format (<p t="ms" d="ms"> with <s> sub-elements)
- * This is what the ANDROID client returns.
- */
-function parseSrv3Xml(xml: string): CaptionEntry[] {
+// Parse standard XML:  <text start="s" dur="s">text</text>
+function parseStandard(xml: string): CaptionEntry[] {
   const entries: CaptionEntry[] = [];
-  const regex = /<p t="(\d+)" d="(\d+)"[^>]*>([\s\S]*?)<\/p>/g;
-  let match;
-  while ((match = regex.exec(xml)) !== null) {
-    const tMs = parseInt(match[1]);
-    const dMs = parseInt(match[2]);
-    // Strip inner <s> tags to get plain text
-    const text = decodeHtmlEntities(match[3].replace(/<[^>]+>/g, "").trim());
+  const re = /<text\s+start="([^"]*)"(?:\s+dur="([^"]*)")?[^>]*>([\s\S]*?)<\/text>/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(xml)) !== null) {
+    const text = decodeEntities(m[3].replace(/<[^>]+>/g, "").trim());
     if (text) {
-      entries.push({ text, start: tMs / 1000, duration: dMs / 1000 });
+      entries.push({
+        text,
+        start: parseFloat(m[1]),
+        duration: parseFloat(m[2] || "0"),
+      });
     }
   }
   return entries;
 }
 
-/**
- * Parse json3 format (events with segs arrays)
- */
-function parseJson3(jsonText: string): CaptionEntry[] {
-  const entries: CaptionEntry[] = [];
-  try {
-    const data = JSON.parse(jsonText);
-    const events = (data.events || []).filter(
-      (e: { segs?: unknown }) => e.segs
-    );
-    for (const event of events) {
-      const text = event.segs
-        .map((s: { utf8?: string }) => s.utf8 || "")
-        .join("")
-        .trim();
-      if (text && text !== "\n") {
-        entries.push({
-          text,
-          start: (event.tStartMs || 0) / 1000,
-          duration: (event.dDurationMs || 0) / 1000,
-        });
-      }
-    }
-  } catch {
-    // Not JSON
-  }
-  return entries;
-}
-
-/**
- * Auto-detect format and parse caption data
- */
 function parseCaptions(data: string): CaptionEntry[] {
-  // Try json3 first
-  if (data.trim().startsWith("{")) {
-    const entries = parseJson3(data);
-    if (entries.length > 0) return entries;
-  }
-
-  // Try srv3 format (<p t="" d="">)
   if (data.includes("<p t=")) {
-    const entries = parseSrv3Xml(data);
-    if (entries.length > 0) return entries;
+    const r = parseSrv3(data);
+    if (r.length > 0) return r;
   }
-
-  // Try standard XML (<text start="" dur="">)
-  return parseStandardXml(data);
+  return parseStandard(data);
 }
+
+// ─── Paragraph grouping ───────────────────────────────────
 
 interface Paragraph {
   timestamp: string;
@@ -143,139 +103,88 @@ interface Paragraph {
 }
 
 function groupIntoParagraphs(segments: CaptionEntry[]): Paragraph[] {
-  const paragraphs: Paragraph[] = [];
-  let currentText = "";
-  let currentTimestamp = "";
-  let currentOffsetMs = 0;
-  let sentenceCount = 0;
+  const out: Paragraph[] = [];
+  let buf = "";
+  let ts = "";
+  let off = 0;
+  let sc = 0;
 
-  for (const segment of segments) {
-    if (!currentTimestamp) {
-      currentTimestamp = formatTimestamp(segment.start);
-      currentOffsetMs = Math.floor(segment.start * 1000);
+  for (const seg of segments) {
+    if (!ts) {
+      ts = formatTimestamp(seg.start);
+      off = Math.floor(seg.start * 1000);
     }
-    currentText += (currentText ? " " : "") + segment.text.trim();
-    const sentences = segment.text.match(/[.!?]+/g);
-    if (sentences) sentenceCount += sentences.length;
+    buf += (buf ? " " : "") + seg.text.trim();
+    sc += (seg.text.match(/[.!?]+/g) || []).length;
 
-    if (sentenceCount >= 3 || currentText.length > 400) {
-      paragraphs.push({
-        timestamp: currentTimestamp,
-        offsetMs: currentOffsetMs,
-        text: currentText.trim(),
-      });
-      currentText = "";
-      currentTimestamp = "";
-      currentOffsetMs = 0;
-      sentenceCount = 0;
+    if (sc >= 3 || buf.length > 400) {
+      out.push({ timestamp: ts, offsetMs: off, text: buf.trim() });
+      buf = "";
+      ts = "";
+      off = 0;
+      sc = 0;
     }
   }
-  if (currentText.trim()) {
-    paragraphs.push({
-      timestamp: currentTimestamp,
-      offsetMs: currentOffsetMs,
-      text: currentText.trim(),
-    });
-  }
-  return paragraphs;
+  if (buf.trim()) out.push({ timestamp: ts, offsetMs: off, text: buf.trim() });
+  return out;
 }
 
-/**
- * Extract a JSON object from a string using brace counting.
- */
-function extractJsonObject(str: string, startIndex: number): string | null {
-  if (str[startIndex] !== "{") return null;
-  let depth = 0;
-  let inString = false;
-  let escape = false;
+// ─── Core fetch ────────────────────────────────────────────
+//
+// Strategy: ANDROID Innertube client.
+//
+// Why ANDROID? The WEB client's caption URLs have ip=0.0.0.0 and
+// return 200 with empty body from server-side. ANDROID returns fresh
+// signed URLs that actually deliver data.
+//
+// We also collect session cookies from the initial page fetch
+// to avoid bot-detection blocks.
 
-  for (let i = startIndex; i < str.length; i++) {
-    const ch = str[i];
-    if (escape) {
-      escape = false;
-      continue;
-    }
-    if (ch === "\\") {
-      escape = true;
-      continue;
-    }
-    if (ch === '"') {
-      inString = !inString;
-      continue;
-    }
-    if (inString) continue;
-
-    if (ch === "{") depth++;
-    else if (ch === "}") {
-      depth--;
-      if (depth === 0) {
-        return str.substring(startIndex, i + 1);
-      }
-    }
-  }
-  return null;
+interface CaptionTrack {
+  languageCode: string;
+  kind?: string;
+  baseUrl: string;
+  name?: { simpleText?: string };
 }
-
-const USER_AGENT =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
-
-// ─── Core: Session-based approach ──────────────────────────
-//
-// 1. Fetch the YouTube page to get session cookies + API key
-// 2. Use ANDROID Innertube client (with session cookies) to get fresh caption URLs
-// 3. Fetch caption data from those URLs
-//
-// The WEB client's caption URLs return empty bodies from server-side.
-// The ANDROID client returns caption URLs that actually work.
 
 async function fetchTranscript(
   videoId: string,
   lang = "en"
-): Promise<CaptionEntry[]> {
-  console.log("[v0] Starting transcript fetch for:", videoId);
+): Promise<{ entries: CaptionEntry[]; language: string }> {
+  console.log("[v0] Fetching transcript for:", videoId);
 
-  // Step 1: Fetch YouTube page to get session cookies + API key
+  // 1. Fetch page to collect session cookies
   const pageRes = await fetch(
     `https://www.youtube.com/watch?v=${videoId}`,
     {
       headers: {
-        "User-Agent": USER_AGENT,
+        "User-Agent": UA,
         "Accept-Language": "en-US,en;q=0.9",
         Cookie: "CONSENT=YES+1",
       },
     }
   );
+  if (!pageRes.ok) throw new Error(`Page fetch failed: ${pageRes.status}`);
 
-  if (!pageRes.ok) {
-    throw new Error(`Page fetch failed: ${pageRes.status}`);
-  }
-
-  // Collect session cookies
-  const setCookies = pageRes.headers.getSetCookie
-    ? pageRes.headers.getSetCookie()
-    : [];
-  const cookieParts = ["CONSENT=YES+1"];
-  for (const sc of setCookies) {
-    cookieParts.push(sc.split(";")[0]);
-  }
-  const cookieStr = cookieParts.join("; ");
-
+  const setCookies = pageRes.headers.getSetCookie?.() ?? [];
+  const cookies = ["CONSENT=YES+1", ...setCookies.map((c) => c.split(";")[0])];
+  const cookieStr = cookies.join("; ");
   const html = await pageRes.text();
-  console.log("[v0] Page fetched. HTML length:", html.length);
 
-  // Extract API key
   const apiKeyMatch = html.match(/"INNERTUBE_API_KEY":"([^"]+)"/);
-  const apiKey = apiKeyMatch?.[1] || "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8";
+  const apiKey =
+    apiKeyMatch?.[1] || "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8";
 
-  // Step 2: Use ANDROID client to get working caption URLs
-  console.log("[v0] Calling ANDROID Innertube player...");
+  console.log("[v0] Page fetched, cookies:", cookies.length, "API key found:", !!apiKeyMatch);
+
+  // 2. ANDROID Innertube player
   const playerRes = await fetch(
     `https://www.youtube.com/youtubei/v1/player?key=${apiKey}&prettyPrint=false`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "User-Agent": USER_AGENT,
+        "User-Agent": UA,
         Cookie: cookieStr,
       },
       body: JSON.stringify({
@@ -294,143 +203,77 @@ async function fetchTranscript(
   );
 
   if (!playerRes.ok) {
-    console.log("[v0] ANDROID player API failed:", playerRes.status);
-    // Fallback: try to get tracks from page HTML
-    return await fallbackFromPageHtml(html, cookieStr, lang);
+    console.log("[v0] ANDROID player API status:", playerRes.status);
+    throw new Error("YouTube API request failed");
   }
 
-  const playerData = await playerRes.json();
-  console.log("[v0] ANDROID status:", playerData?.playabilityStatus?.status);
+  const player = await playerRes.json();
+  const status = player?.playabilityStatus?.status;
+  console.log("[v0] Playability:", status);
 
-  const tracks =
-    playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
-
-  if (!tracks || tracks.length === 0) {
-    console.log("[v0] No tracks from ANDROID client. Reason:", playerData?.playabilityStatus?.reason);
-    // Fallback: try page HTML approach
-    return await fallbackFromPageHtml(html, cookieStr, lang);
-  }
-
-  console.log("[v0] Found", tracks.length, "tracks from ANDROID client");
-
-  // Select track by language
-  let track = tracks.find(
-    (t: { languageCode: string }) => t.languageCode === lang
-  );
-  if (!track) {
-    track = tracks.find((t: { languageCode: string }) =>
-      t.languageCode.startsWith(lang)
+  if (status !== "OK") {
+    throw new Error(
+      player?.playabilityStatus?.reason || "Video is not playable"
     );
   }
-  if (!track) {
-    track = tracks[0];
-  }
 
-  console.log("[v0] Selected track:", track.languageCode, track.kind || "manual");
-
-  // Step 3: Fetch caption data
-  // Try json3 format first, then raw
-  const formats = ["&fmt=json3", ""];
-  for (const fmt of formats) {
-    const captionUrl = track.baseUrl + fmt;
-    console.log("[v0] Fetching captions with format:", fmt || "default");
-
-    const captionRes = await fetch(captionUrl, {
-      headers: {
-        "User-Agent": USER_AGENT,
-        Cookie: cookieStr,
-      },
-    });
-
-    if (!captionRes.ok) continue;
-
-    const captionData = await captionRes.text();
-    console.log("[v0] Caption data length:", captionData.length);
-
-    if (captionData.length > 0) {
-      const entries = parseCaptions(captionData);
-      console.log("[v0] Parsed entries:", entries.length);
-      if (entries.length > 0) return entries;
-    }
-  }
-
-  throw new Error("Caption URLs returned empty data");
-}
-
-/**
- * Fallback: Extract caption tracks from embedded ytInitialPlayerResponse
- * in the page HTML, and try to fetch them.
- */
-async function fallbackFromPageHtml(
-  html: string,
-  cookieStr: string,
-  lang: string
-): Promise<CaptionEntry[]> {
-  console.log("[v0] Fallback: trying page HTML embedded data...");
-
-  const marker = "var ytInitialPlayerResponse = ";
-  const markerIdx = html.indexOf(marker);
-  if (markerIdx === -1) {
-    throw new Error("No player response found in page HTML");
-  }
-
-  const jsonStart = markerIdx + marker.length;
-  const jsonStr = extractJsonObject(html, jsonStart);
-  if (!jsonStr) {
-    throw new Error("Could not extract player response JSON");
-  }
-
-  const playerData = JSON.parse(jsonStr);
-  const tracks =
-    playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+  const tracks: CaptionTrack[] | undefined =
+    player?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
 
   if (!tracks || tracks.length === 0) {
     throw new Error("No caption tracks available for this video");
   }
 
-  console.log("[v0] Found", tracks.length, "tracks in page HTML");
-
-  // Select track
-  let track = tracks.find(
-    (t: { languageCode: string }) => t.languageCode === lang
+  console.log(
+    "[v0] Tracks:",
+    tracks.map((t) => `${t.languageCode}(${t.kind || "manual"})`).join(", ")
   );
+
+  // 3. Pick the best track
+  let track =
+    tracks.find((t) => t.languageCode === lang && t.kind !== "asr") ??
+    tracks.find((t) => t.languageCode === lang) ??
+    tracks.find((t) => t.languageCode.startsWith(lang) && t.kind !== "asr") ??
+    tracks.find((t) => t.languageCode.startsWith(lang));
+
+  // If no English, pick first manual, then first ASR
   if (!track) {
-    track = tracks.find((t: { languageCode: string }) =>
-      t.languageCode.startsWith(lang)
-    );
-  }
-  if (!track) track = tracks[0];
-
-  // Try fetching with cookies
-  const formats = ["&fmt=json3", ""];
-  for (const fmt of formats) {
-    try {
-      const captionRes = await fetch(track.baseUrl + fmt, {
-        headers: {
-          "User-Agent": USER_AGENT,
-          Cookie: cookieStr,
-        },
-      });
-
-      if (!captionRes.ok) continue;
-      const captionData = await captionRes.text();
-      if (captionData.length > 0) {
-        const entries = parseCaptions(captionData);
-        if (entries.length > 0) return entries;
-      }
-    } catch {
-      continue;
-    }
+    track =
+      tracks.find((t) => t.kind !== "asr") ?? tracks[0];
   }
 
-  throw new Error("No caption tracks could be fetched for this video");
+  const chosenLang = track.languageCode;
+  console.log("[v0] Selected track:", chosenLang, track.kind || "manual");
+
+  // 4. Fetch caption data
+  const captionRes = await fetch(track.baseUrl, {
+    headers: { "User-Agent": UA, Cookie: cookieStr },
+  });
+  if (!captionRes.ok) {
+    throw new Error(`Caption fetch failed: ${captionRes.status}`);
+  }
+
+  const xml = await captionRes.text();
+  console.log("[v0] Caption data length:", xml.length);
+
+  if (xml.length === 0) {
+    throw new Error("Caption URL returned empty data");
+  }
+
+  const entries = parseCaptions(xml);
+  console.log("[v0] Parsed entries:", entries.length);
+
+  if (entries.length === 0) {
+    throw new Error("Could not parse caption data");
+  }
+
+  return { entries, language: chosenLang };
 }
 
 // ─── Route handler ─────────────────────────────────────────
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const url = searchParams.get("url");
+  const url = new URL(request.url).searchParams.get("url");
 
   if (!url) {
     return NextResponse.json(
@@ -447,44 +290,42 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  console.log("[v0] ═══ Transcript request for:", videoId, "═══");
-
   try {
-    const segments = await fetchTranscript(videoId, "en");
-    const paragraphs = groupIntoParagraphs(segments);
+    const { entries, language } = await fetchTranscript(videoId, "en");
+    const paragraphs = groupIntoParagraphs(entries);
 
-    // Fetch title via oEmbed
+    // Title via oEmbed
     let title = "Untitled Video";
     try {
-      const oembedRes = await fetch(
+      const r = await fetch(
         `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${videoId}&format=json`
       );
-      if (oembedRes.ok) {
-        const oembed = await oembedRes.json();
-        title = oembed.title || title;
+      if (r.ok) {
+        const j = await r.json();
+        title = j.title || title;
       }
     } catch {
-      // ignore
+      /* ignore */
     }
 
-    console.log("[v0] Success! Segments:", segments.length, "Paragraphs:", paragraphs.length);
+    console.log("[v0] Done:", entries.length, "segments,", paragraphs.length, "paragraphs, lang:", language);
 
     return NextResponse.json({
       videoId,
       title,
       paragraphs,
-      totalSegments: segments.length,
+      totalSegments: entries.length,
+      language,
     });
   } catch (error) {
     console.error("[v0] Error:", error);
-    const message =
-      error instanceof Error ? error.message : "Unknown error occurred";
+    const msg = error instanceof Error ? error.message : "Unknown error";
 
     return NextResponse.json(
       {
-        error: message.includes("No caption")
-          ? "This video does not have captions/subtitles available."
-          : `Could not fetch transcript. ${message}`,
+        error: msg.includes("No caption")
+          ? "This video does not have captions or subtitles available."
+          : `Could not fetch transcript. ${msg}`,
       },
       { status: 500 }
     );

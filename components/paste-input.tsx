@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, BookOpen } from "lucide-react";
+import { ThemeSwitcher } from "@/components/theme-switcher";
 
 interface PasteInputProps {
   onSubmit: (url: string) => void;
@@ -36,12 +37,22 @@ export function PasteInput({ onSubmit, isLoading }: PasteInputProps) {
 
   return (
     <motion.div
-      className="flex min-h-dvh flex-col items-center justify-center px-6"
+      className="relative flex min-h-dvh flex-col items-center justify-center px-6"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, y: -40, scale: 0.98 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
     >
+      {/* Theme switcher in top-right */}
+      <motion.div
+        className="absolute right-6 top-6"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.8, duration: 0.5 }}
+      >
+        <ThemeSwitcher />
+      </motion.div>
+
       {/* Brand mark */}
       <motion.div
         className="mb-16 flex items-center gap-3"
