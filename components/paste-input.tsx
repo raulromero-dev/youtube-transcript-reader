@@ -58,29 +58,22 @@ export function PasteInput({ onSubmit, isLoading }: PasteInputProps) {
       exit={{ opacity: 0, y: -40, scale: 0.98 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
     >
-      {/* Background video — dark mode only */}
-      <AnimatePresence>
-        {isDark && (
-          <motion.div
-            className="absolute inset-0 z-0"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1.2 }}
-          >
-            <video
-              ref={handleVideoReady}
-              autoPlay
-              muted
-              playsInline
-              className="h-full w-full object-cover"
-              src="/book-animation.mp4"
-            />
-            {/* Dark overlay — 90% opaque */}
-            <div className="absolute inset-0 bg-background/90" />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Background video — always in DOM to avoid hydration mismatch, visibility via CSS */}
+      <div
+        className="absolute inset-0 z-0 transition-opacity duration-1000"
+        style={{ opacity: isDark ? 1 : 0, pointerEvents: isDark ? "auto" : "none" }}
+      >
+        <video
+          ref={handleVideoReady}
+          autoPlay
+          muted
+          playsInline
+          className="h-full w-full object-cover"
+          src="/book-animation.mp4"
+        />
+        {/* Dark overlay — 90% opaque */}
+        <div className="absolute inset-0 bg-background/90" />
+      </div>
 
       {/* Theme switcher in top-right */}
       <motion.div
