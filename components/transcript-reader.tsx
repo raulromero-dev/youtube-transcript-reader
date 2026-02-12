@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -38,14 +38,121 @@ interface TranscriptReaderProps {
 
 const PARAGRAPHS_PER_PAGE = 4;
 
+/* ------------------------------------------------------------------ */
+/*  Animated word component — blur + rise reveal                      */
+/* ------------------------------------------------------------------ */
+function AnimatedWord({
+  word,
+  index,
+  paragraphDelay,
+}: {
+  word: string;
+  index: number;
+  paragraphDelay: number;
+}) {
+  const delay = paragraphDelay + index * 0.035;
+
+  return (
+    <motion.span
+      className="inline-block"
+      initial={{ opacity: 0, filter: "blur(8px)", y: 6 }}
+      animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+      transition={{
+        delay,
+        duration: 0.5,
+        ease: [0.22, 1, 0.36, 1],
+      }}
+    >
+      {word}&nbsp;
+    </motion.span>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Paragraph with staggered word reveal                              */
+/* ------------------------------------------------------------------ */
+function RevealParagraph({
+  paragraph,
+  paragraphIndex,
+  showTimestamps,
+  fontSizeClass,
+  isFirstReveal,
+}: {
+  paragraph: Paragraph;
+  paragraphIndex: number;
+  showTimestamps: boolean;
+  fontSizeClass: string;
+  isFirstReveal: boolean;
+}) {
+  const words = useMemo(() => paragraph.text.split(/\s+/), [paragraph.text]);
+  const paragraphDelay = isFirstReveal ? 0.3 + paragraphIndex * 0.4 : 0.05 + paragraphIndex * 0.06;
+
+  if (!isFirstReveal) {
+    // After first reveal, use simpler slide-in per paragraph
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{
+          delay: 0.05 + paragraphIndex * 0.08,
+          duration: 0.4,
+          ease: [0.22, 1, 0.36, 1],
+        }}
+      >
+        {showTimestamps && (
+          <span className="mb-2 inline-block font-sans text-xs uppercase tracking-widest text-muted-foreground/60">
+            {paragraph.timestamp}
+          </span>
+        )}
+        <p className={`font-sans leading-relaxed text-foreground ${fontSizeClass}`}>
+          {paragraph.text}
+        </p>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: paragraphDelay - 0.1, duration: 0.2 }}
+    >
+      {showTimestamps && (
+        <motion.span
+          className="mb-2 inline-block font-sans text-xs uppercase tracking-widest text-muted-foreground/60"
+          initial={{ opacity: 0, filter: "blur(4px)" }}
+          animate={{ opacity: 1, filter: "blur(0px)" }}
+          transition={{ delay: paragraphDelay - 0.05, duration: 0.4 }}
+        >
+          {paragraph.timestamp}
+        </motion.span>
+      )}
+      <p className={`font-sans leading-relaxed text-foreground ${fontSizeClass}`}>
+        {words.map((word, wi) => (
+          <AnimatedWord
+            key={`${paragraphIndex}-${wi}`}
+            word={word}
+            index={wi}
+            paragraphDelay={paragraphDelay}
+          />
+        ))}
+      </p>
+    </motion.div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main reader                                                       */
+/* ------------------------------------------------------------------ */
 export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
   const [currentPage, setCurrentPage] = useState(0);
   const [direction, setDirection] = useState(0);
-  const [fontSize, setFontSize] = useState(1); // 0=small, 1=medium, 2=large
+  const [fontSize, setFontSize] = useState(1);
   const [showTimestamps, setShowTimestamps] = useState(true);
   const [copied, setCopied] = useState(false);
   const [showControls, setShowControls] = useState(false);
   const [viewMode, setViewMode] = useState<"paged" | "scroll">("paged");
+  const [isFirstReveal, setIsFirstReveal] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef(0);
 
@@ -55,6 +162,20 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
     currentPage * PARAGRAPHS_PER_PAGE,
     (currentPage + 1) * PARAGRAPHS_PER_PAGE
   );
+
+  // After the first page reveal completes, disable the fancy word animation
+  useEffect(() => {
+    if (isFirstReveal) {
+      const maxWords = currentParagraphs.reduce(
+        (acc, p) => acc + p.text.split(/\s+/).length,
+        0
+      );
+      const totalDuration =
+        (0.3 + (currentParagraphs.length - 1) * 0.4 + maxWords * 0.035 + 0.5) * 1000;
+      const timer = setTimeout(() => setIsFirstReveal(false), totalDuration);
+      return () => clearTimeout(timer);
+    }
+  }, [isFirstReveal, currentParagraphs]);
 
   const goToPage = useCallback(
     (page: number) => {
@@ -68,7 +189,6 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
   const nextPage = useCallback(() => goToPage(currentPage + 1), [currentPage, goToPage]);
   const prevPage = useCallback(() => goToPage(currentPage - 1), [currentPage, goToPage]);
 
-  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight" || e.key === " ") {
@@ -81,7 +201,6 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
         onBack();
       }
     };
-
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [nextPage, prevPage, onBack]);
@@ -96,24 +215,15 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
   };
 
   const fontSizeClasses = [
-    "text-base leading-relaxed",
-    "text-lg leading-relaxed",
-    "text-xl leading-8",
+    "text-base",
+    "text-lg",
+    "text-xl",
   ];
 
   const pageVariants = {
-    enter: (dir: number) => ({
-      x: dir > 0 ? 60 : -60,
-      opacity: 0,
-    }),
-    center: {
-      x: 0,
-      opacity: 1,
-    },
-    exit: (dir: number) => ({
-      x: dir > 0 ? -60 : 60,
-      opacity: 0,
-    }),
+    enter: (dir: number) => ({ x: dir > 0 ? 60 : -60, opacity: 0 }),
+    center: { x: 0, opacity: 1 },
+    exit: (dir: number) => ({ x: dir > 0 ? -60 : 60, opacity: 0 }),
   };
 
   return (
@@ -157,9 +267,7 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
             )}
 
             <motion.button
-              onClick={() =>
-                setFontSize((s) => Math.min(2, s + 1))
-              }
+              onClick={() => setFontSize((s) => Math.min(2, s + 1))}
               disabled={fontSize >= 2}
               className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-30"
               whileTap={{ scale: 0.9 }}
@@ -169,9 +277,7 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
             </motion.button>
 
             <motion.button
-              onClick={() =>
-                setFontSize((s) => Math.max(0, s - 1))
-              }
+              onClick={() => setFontSize((s) => Math.max(0, s - 1))}
               disabled={fontSize <= 0}
               className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-30"
               whileTap={{ scale: 0.9 }}
@@ -256,20 +362,30 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
           }
         }}
       >
-        {/* Title section */}
+        {/* Title section — Playfair Display */}
         <motion.div
           className="mb-10 w-full max-w-2xl text-center"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.6 }}
+          transition={{ delay: 0.1, duration: 0.6 }}
         >
-          <h1 className="mb-2 text-balance font-serif text-2xl tracking-tight text-foreground md:text-3xl">
+          <motion.h1
+            className="mb-2 text-balance font-serif text-2xl font-medium tracking-tight text-foreground md:text-3xl"
+            initial={{ opacity: 0, filter: "blur(10px)", y: 12 }}
+            animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+            transition={{ delay: 0.15, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+          >
             {data.title}
-          </h1>
-          <p className="text-sm text-muted-foreground">
+          </motion.h1>
+          <motion.p
+            className="text-sm text-muted-foreground"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4, duration: 0.5 }}
+          >
             {data.totalSegments} segments
             {viewMode === "paged" && <> &middot; {totalPages} pages</>}
-          </p>
+          </motion.p>
         </motion.div>
 
         <AnimatePresence mode="wait">
@@ -314,7 +430,7 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
                 )}
               </AnimatePresence>
 
-              {/* The "page" */}
+              {/* The page card */}
               <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
                 <AnimatePresence mode="wait" custom={direction}>
                   <motion.div
@@ -325,38 +441,21 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
                     animate="center"
                     exit="exit"
                     transition={{
-                      x: {
-                        type: "spring",
-                        stiffness: 300,
-                        damping: 30,
-                      },
+                      x: { type: "spring", stiffness: 300, damping: 30 },
                       opacity: { duration: 0.25 },
                     }}
                     className="px-8 py-10 md:px-14 md:py-12"
                   >
                     <div className="flex flex-col gap-8">
                       {currentParagraphs.map((paragraph, i) => (
-                        <motion.div
+                        <RevealParagraph
                           key={`${currentPage}-${i}`}
-                          initial={{ opacity: 0, y: 12 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{
-                            delay: 0.1 + i * 0.08,
-                            duration: 0.4,
-                            ease: [0.22, 1, 0.36, 1],
-                          }}
-                        >
-                          {showTimestamps && (
-                            <span className="mb-2 inline-block font-sans text-xs uppercase tracking-widest text-muted-foreground/60">
-                              {paragraph.timestamp}
-                            </span>
-                          )}
-                          <p
-                            className={`font-serif text-foreground ${fontSizeClasses[fontSize]}`}
-                          >
-                            {paragraph.text}
-                          </p>
-                        </motion.div>
+                          paragraph={paragraph}
+                          paragraphIndex={i}
+                          showTimestamps={showTimestamps}
+                          fontSizeClass={fontSizeClasses[fontSize]}
+                          isFirstReveal={isFirstReveal && currentPage === 0}
+                        />
                       ))}
                     </div>
                   </motion.div>
@@ -403,7 +502,6 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
                     transition={{ duration: 0.4, ease: "easeOut" }}
                   />
                 </div>
-
                 <div className="flex items-center gap-2 text-sm text-muted-foreground/60">
                   <BookOpen className="h-3.5 w-3.5" />
                   <span>
@@ -425,27 +523,14 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
               <div className="rounded-xl border border-border bg-card px-8 py-10 shadow-sm md:px-14 md:py-12">
                 <div className="flex flex-col gap-8">
                   {data.paragraphs.map((paragraph, i) => (
-                    <motion.div
+                    <RevealParagraph
                       key={i}
-                      initial={{ opacity: 0, y: 12 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{
-                        delay: Math.min(i * 0.03, 0.5),
-                        duration: 0.4,
-                        ease: [0.22, 1, 0.36, 1],
-                      }}
-                    >
-                      {showTimestamps && (
-                        <span className="mb-2 inline-block font-sans text-xs uppercase tracking-widest text-muted-foreground/60">
-                          {paragraph.timestamp}
-                        </span>
-                      )}
-                      <p
-                        className={`font-serif text-foreground ${fontSizeClasses[fontSize]}`}
-                      >
-                        {paragraph.text}
-                      </p>
-                    </motion.div>
+                      paragraph={paragraph}
+                      paragraphIndex={i}
+                      showTimestamps={showTimestamps}
+                      fontSizeClass={fontSizeClasses[fontSize]}
+                      isFirstReveal={isFirstReveal}
+                    />
                   ))}
                 </div>
               </div>

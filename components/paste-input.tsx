@@ -71,7 +71,7 @@ export function PasteInput({ onSubmit, onDemo, isLoading }: PasteInputProps) {
 
       {/* Main heading */}
       <motion.h1
-        className="mb-4 text-center font-serif text-5xl tracking-tight text-foreground md:text-7xl"
+        className="mb-4 text-center font-serif text-5xl font-medium tracking-tight text-foreground md:text-7xl"
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}

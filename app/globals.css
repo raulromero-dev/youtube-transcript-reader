@@ -68,27 +68,27 @@
     --chart-5: 27 87% 67%;
   }
 
-  /* Dark — deep charcoal reading mode */
+  /* Dark — deep ink reading mode */
   [data-theme="dark"] {
-    --background: 220 14% 10%;
-    --foreground: 220 10% 90%;
-    --card: 220 14% 13%;
-    --card-foreground: 220 10% 90%;
-    --popover: 220 14% 10%;
-    --popover-foreground: 220 10% 90%;
-    --primary: 220 10% 90%;
-    --primary-foreground: 220 14% 10%;
-    --secondary: 220 10% 18%;
-    --secondary-foreground: 220 10% 80%;
-    --muted: 220 10% 16%;
-    --muted-foreground: 220 8% 55%;
-    --accent: 220 10% 20%;
-    --accent-foreground: 220 10% 90%;
+    --background: 240 10% 4%;
+    --foreground: 40 10% 82%;
+    --card: 240 8% 7%;
+    --card-foreground: 40 10% 82%;
+    --popover: 240 10% 4%;
+    --popover-foreground: 40 10% 82%;
+    --primary: 40 10% 82%;
+    --primary-foreground: 240 10% 4%;
+    --secondary: 240 6% 12%;
+    --secondary-foreground: 40 8% 70%;
+    --muted: 240 6% 10%;
+    --muted-foreground: 240 5% 42%;
+    --accent: 240 6% 14%;
+    --accent-foreground: 40 10% 82%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 220 10% 18%;
-    --input: 220 10% 18%;
-    --ring: 220 10% 80%;
+    --border: 240 6% 12%;
+    --input: 240 6% 12%;
+    --ring: 40 10% 60%;
     --radius: 0.75rem;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
@@ -132,6 +132,6 @@
   color: hsl(240 6% 10%);
 }
 [data-theme="dark"] ::selection {
-  background: hsl(220 40% 30%);
-  color: hsl(220 10% 90%);
+  background: hsl(240 20% 22%);
+  color: hsl(40 10% 82%);
 }

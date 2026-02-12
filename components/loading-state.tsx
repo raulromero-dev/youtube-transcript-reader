@@ -99,7 +99,7 @@ export function LoadingState() {
       </div>
 
       <motion.p
-        className="mb-8 font-serif text-xl text-muted-foreground"
+        className="mb-8 font-serif text-xl font-medium text-muted-foreground"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}

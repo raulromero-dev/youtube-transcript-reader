@@ -27,7 +27,7 @@ export function ErrorState({ message, onBack }: ErrorStateProps) {
       </motion.div>
 
       <motion.h2
-        className="mt-6 font-serif text-2xl text-foreground"
+        className="mt-6 font-serif text-2xl font-medium text-foreground"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2, duration: 0.4 }}
