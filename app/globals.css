@@ -9,6 +9,23 @@
 }
 
 @layer base {
+  /* =========================================================
+     Landing page tokens — always white bg / black text
+     regardless of reading theme
+     ========================================================= */
+  :root {
+    --landing-bg: 0 0% 100%;
+    --landing-fg: 0 0% 5%;
+    --landing-card: 0 0% 100%;
+    --landing-border: 0 0% 90%;
+    --landing-muted: 0 0% 45%;
+    --landing-subtle: 0 0% 96%;
+  }
+
+  /* =========================================================
+     Reader themes — Paper / Light / Dark
+     ========================================================= */
+
   /* Paper — warm aged-paper tones (default) */
   :root,
   [data-theme="paper"] {
@@ -107,6 +124,11 @@
   }
 }
 
+/* Landing page always white regardless of theme */
+.landing-bg {
+  background: hsl(var(--landing-bg));
+}
+
 /* Liquid glass top bar */
 .glass-bar {
   background: hsla(var(--background) / 0.55);
@@ -145,7 +167,7 @@
   background: hsl(var(--muted-foreground));
 }
 
-/* Selection */
+/* Selection per reader theme */
 [data-theme="paper"] ::selection {
   background: hsl(34 40% 82%);
   color: hsl(24 10% 10%);
@@ -157,4 +179,10 @@
 [data-theme="dark"] ::selection {
   background: hsl(240 20% 22%);
   color: hsl(40 10% 82%);
+}
+
+/* Landing page selection always black/white */
+.landing-bg ::selection {
+  background: hsl(0 0% 85%);
+  color: hsl(0 0% 5%);
 }

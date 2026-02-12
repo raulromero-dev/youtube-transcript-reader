@@ -15,7 +15,7 @@ const lines = [
 export function LoadingState() {
   return (
     <motion.div
-      className="flex min-h-dvh flex-col items-center justify-center px-6"
+      className="landing-bg flex min-h-dvh flex-col items-center justify-center px-6"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -31,7 +31,7 @@ export function LoadingState() {
         >
           {/* Left page */}
           <motion.div
-            className="h-32 w-24 rounded-l-md border border-border bg-card shadow-md"
+            className="h-32 w-24 rounded-l-md border border-landing-border bg-landing-subtle shadow-md"
             initial={{ rotateY: 0 }}
             animate={{ rotateY: [-20, 0, -20] }}
             transition={{
@@ -45,7 +45,7 @@ export function LoadingState() {
               {[65, 80, 50, 70, 60, 75].map((w, i) => (
                 <motion.div
                   key={i}
-                  className="h-1 rounded-full bg-border"
+                  className="h-1 rounded-full bg-landing-border"
                   style={{ width: `${w}%` }}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: [0.3, 0.6, 0.3] }}
@@ -61,7 +61,7 @@ export function LoadingState() {
 
           {/* Right page */}
           <motion.div
-            className="h-32 w-24 rounded-r-md border border-border bg-card shadow-md"
+            className="h-32 w-24 rounded-r-md border border-landing-border bg-landing-subtle shadow-md"
             initial={{ rotateY: 0 }}
             animate={{ rotateY: [20, 0, 20] }}
             transition={{
@@ -75,7 +75,7 @@ export function LoadingState() {
               {[70, 85, 55, 75, 65, 80].map((w, i) => (
                 <motion.div
                   key={i}
-                  className="h-1 rounded-full bg-border"
+                  className="h-1 rounded-full bg-landing-border"
                   style={{ width: `${w}%` }}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: [0.3, 0.6, 0.3] }}
@@ -92,14 +92,14 @@ export function LoadingState() {
 
         {/* Spine line */}
         <motion.div
-          className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-border"
+          className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-landing-border"
           animate={{ opacity: [0.5, 1, 0.5] }}
           transition={{ duration: 2, repeat: Infinity }}
         />
       </div>
 
       <motion.p
-        className="mb-8 font-serif text-xl font-medium text-muted-foreground"
+        className="mb-8 text-lg font-medium text-landing-muted"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
@@ -118,7 +118,7 @@ export function LoadingState() {
           {lines.map((line, i) => (
             <motion.div
               key={i}
-              className="h-2.5 rounded-full bg-border"
+              className="h-2.5 rounded-full bg-landing-border"
               style={{ width: line.width }}
               animate={{ opacity: [0.3, 0.6, 0.3] }}
               transition={{
