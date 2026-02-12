@@ -124,8 +124,12 @@ async function fetchTranscriptViaInnertube(
   videoId: string,
   lang = "en"
 ): Promise<CaptionEntry[]> {
+  console.log("[v0] === Starting transcript fetch for videoId:", videoId);
+
   // Step 1: Fetch the video page HTML to get the INNERTUBE_API_KEY
   const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  console.log("[v0] Step 1: Fetching video page:", videoUrl);
+
   const pageRes = await fetch(videoUrl, {
     headers: {
       "User-Agent":
@@ -134,75 +138,168 @@ async function fetchTranscriptViaInnertube(
     },
   });
 
+  console.log("[v0] Step 1 response status:", pageRes.status);
+
   if (!pageRes.ok) {
-    throw new Error("Failed to fetch YouTube video page");
+    throw new Error(`Failed to fetch YouTube video page (status: ${pageRes.status})`);
   }
 
   const html = await pageRes.text();
+  console.log("[v0] Step 1 HTML length:", html.length);
+
+  // Try to extract captions directly from the page HTML first
+  const ytInitialPlayerMatch = html.match(/var ytInitialPlayerResponse\s*=\s*(\{.+?\});/s);
+  console.log("[v0] Found ytInitialPlayerResponse in HTML:", !!ytInitialPlayerMatch);
+
+  if (ytInitialPlayerMatch) {
+    try {
+      const playerData = JSON.parse(ytInitialPlayerMatch[1]);
+      console.log("[v0] Parsed ytInitialPlayerResponse successfully");
+      console.log("[v0] Has captions key:", !!playerData?.captions);
+      console.log("[v0] Has playerCaptionsTracklistRenderer:", !!playerData?.captions?.playerCaptionsTracklistRenderer);
+
+      const tracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+      console.log("[v0] Caption tracks from HTML:", JSON.stringify(tracks?.map((t: { languageCode: string; kind?: string; name?: { simpleText?: string } }) => ({
+        lang: t.languageCode,
+        kind: t.kind,
+        name: t.name?.simpleText,
+      })) ?? []));
+
+      if (tracks && tracks.length > 0) {
+        console.log("[v0] Using captions from embedded player response");
+        return await fetchCaptionsFromTracks(tracks, lang);
+      }
+    } catch (e) {
+      console.log("[v0] Failed to parse ytInitialPlayerResponse:", e instanceof Error ? e.message : e);
+    }
+  }
+
+  // Fallback: Try extracting from ytInitialData or embedded config
   const apiKeyMatch = html.match(/"INNERTUBE_API_KEY":"([^"]+)"/);
+  console.log("[v0] Found INNERTUBE_API_KEY:", !!apiKeyMatch, apiKeyMatch?.[1]?.slice(0, 10) + "...");
+
   if (!apiKeyMatch) {
+    // Log a snippet of the HTML to understand what we're getting
+    console.log("[v0] HTML snippet (first 1000 chars):", html.slice(0, 1000));
     throw new Error("Could not extract Innertube API key");
   }
   const apiKey = apiKeyMatch[1];
 
-  // Step 2: Call the Innertube player API (as Android client for reliability)
+  // Step 2: Call the Innertube player API - try WEB client first (Android is being blocked)
+  console.log("[v0] Step 2: Calling Innertube player API with WEB client");
+
+  const playerPayload = {
+    context: {
+      client: {
+        clientName: "WEB",
+        clientVersion: "2.20241120.01.00",
+        hl: "en",
+        gl: "US",
+      },
+    },
+    videoId,
+  };
+
+  console.log("[v0] Player API payload:", JSON.stringify(playerPayload));
+
   const playerRes = await fetch(
     `https://www.youtube.com/youtubei/v1/player?key=${apiKey}`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        context: {
-          client: {
-            clientName: "ANDROID",
-            clientVersion: "20.10.38",
-          },
-        },
-        videoId,
-      }),
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+      },
+      body: JSON.stringify(playerPayload),
     }
   );
 
+  console.log("[v0] Step 2 response status:", playerRes.status);
+
   if (!playerRes.ok) {
-    throw new Error("Innertube player API request failed");
+    const errorBody = await playerRes.text();
+    console.log("[v0] Player API error body:", errorBody.slice(0, 500));
+    throw new Error(`Innertube player API request failed (status: ${playerRes.status})`);
   }
 
   const playerData = await playerRes.json();
+  console.log("[v0] Step 2 player data keys:", Object.keys(playerData));
+  console.log("[v0] Has captions:", !!playerData?.captions);
+  console.log("[v0] Has playabilityStatus:", playerData?.playabilityStatus?.status);
+
+  if (playerData?.playabilityStatus?.status !== "OK") {
+    console.log("[v0] Playability status:", JSON.stringify(playerData?.playabilityStatus));
+  }
 
   // Step 3: Extract caption tracks
   const tracks =
     playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+
+  console.log("[v0] Step 3 caption tracks found:", tracks?.length ?? 0);
+  if (tracks) {
+    console.log("[v0] Available tracks:", JSON.stringify(tracks.map((t: { languageCode: string; kind?: string; name?: { simpleText?: string }; baseUrl?: string }) => ({
+      lang: t.languageCode,
+      kind: t.kind,
+      name: t.name?.simpleText,
+      urlPrefix: t.baseUrl?.slice(0, 80),
+    }))));
+  } else {
+    console.log("[v0] Full captions object:", JSON.stringify(playerData?.captions));
+  }
+
   if (!tracks || tracks.length === 0) {
     throw new Error("No caption tracks found for this video");
   }
 
+  return await fetchCaptionsFromTracks(tracks, lang);
+}
+
+async function fetchCaptionsFromTracks(
+  tracks: Array<{ languageCode: string; kind?: string; baseUrl: string; name?: { simpleText?: string } }>,
+  lang: string
+): Promise<CaptionEntry[]> {
   // Try to find the requested language, fall back to first available
-  let track = tracks.find(
-    (t: { languageCode: string }) => t.languageCode === lang
-  );
+  let track = tracks.find((t) => t.languageCode === lang);
+  console.log("[v0] Exact language match for", lang, ":", !!track);
+
   if (!track) {
-    // Try finding auto-generated English or any English variant
-    track = tracks.find((t: { languageCode: string }) =>
-      t.languageCode.startsWith(lang)
-    );
+    track = tracks.find((t) => t.languageCode.startsWith(lang));
+    console.log("[v0] Prefix language match:", !!track);
   }
   if (!track) {
-    // Fall back to first available track
     track = tracks[0];
+    console.log("[v0] Falling back to first track:", track.languageCode);
   }
 
-  // Clean the base URL (remove srv3 format if present, use default XML)
+  console.log("[v0] Selected track:", track.languageCode, track.kind ?? "", track.name?.simpleText ?? "");
+
+  // Clean the base URL
   let captionUrl: string = track.baseUrl;
   captionUrl = captionUrl.replace(/&fmt=\w+/, "");
+  console.log("[v0] Step 4: Fetching captions from URL:", captionUrl.slice(0, 120) + "...");
 
-  // Step 4: Fetch and parse the captions XML
   const captionRes = await fetch(captionUrl);
+  console.log("[v0] Step 4 caption response status:", captionRes.status);
+
   if (!captionRes.ok) {
-    throw new Error("Failed to fetch caption data");
+    const errorBody = await captionRes.text();
+    console.log("[v0] Caption fetch error body:", errorBody.slice(0, 500));
+    throw new Error(`Failed to fetch caption data (status: ${captionRes.status})`);
   }
 
   const xml = await captionRes.text();
-  return parseCaptionsXml(xml);
+  console.log("[v0] Caption XML length:", xml.length);
+  console.log("[v0] Caption XML preview:", xml.slice(0, 300));
+
+  const entries = parseCaptionsXml(xml);
+  console.log("[v0] Parsed caption entries:", entries.length);
+  if (entries.length > 0) {
+    console.log("[v0] First entry:", JSON.stringify(entries[0]));
+    console.log("[v0] Last entry:", JSON.stringify(entries[entries.length - 1]));
+  }
+
+  return entries;
 }
 
 export async function GET(request: NextRequest) {
@@ -258,17 +355,20 @@ export async function GET(request: NextRequest) {
       totalSegments: segments.length,
     });
   } catch (error) {
-    console.error("Transcript fetch error:", error);
-
+    console.error("[v0] Transcript fetch error:", error);
     const message =
       error instanceof Error ? error.message : "Unknown error occurred";
+    const stack = error instanceof Error ? error.stack : undefined;
+    console.error("[v0] Error message:", message);
+    console.error("[v0] Error stack:", stack);
 
     return NextResponse.json(
       {
         error:
           message.includes("No caption")
             ? "This video does not have captions/subtitles available."
-            : "Could not fetch transcript. Please check the URL and try again.",
+            : `Could not fetch transcript: ${message}`,
+        debug: { message, stack: stack?.split("\n").slice(0, 5) },
       },
       { status: 500 }
     );
