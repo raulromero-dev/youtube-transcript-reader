@@ -247,9 +247,9 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
     >
-      {/* Top bar */}
+      {/* Top bar — liquid glass */}
       <motion.header
-        className="sticky top-0 z-20 border-b border-border/50 bg-background/80 backdrop-blur-md"
+        className="glass-bar sticky top-0 z-20"
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.2, duration: 0.5 }}
