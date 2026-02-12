@@ -258,9 +258,9 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
         <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-3">
           <motion.button
             onClick={onBack}
-            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            className="btn-physical flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground"
             whileHover={{ x: -2 }}
-            whileTap={{ scale: 0.9 }}
+            whileTap={{ scale: 0.95 }}
             aria-label="Go back to paste a new video"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -284,8 +284,8 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
             <motion.button
               onClick={() => setFontSize((s) => Math.min(2, s + 1))}
               disabled={fontSize >= 2}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-30"
-              whileTap={{ scale: 0.9 }}
+              className="btn-physical flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground"
+              whileTap={{ scale: 0.95 }}
               aria-label="Increase font size"
             >
               <Type className="h-4 w-4" />
@@ -294,8 +294,8 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
             <motion.button
               onClick={() => setFontSize((s) => Math.max(0, s - 1))}
               disabled={fontSize <= 0}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-30"
-              whileTap={{ scale: 0.9 }}
+              className="btn-physical flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground"
+              whileTap={{ scale: 0.95 }}
               aria-label="Decrease font size"
             >
               <Type className="h-3 w-3" />
@@ -305,12 +305,12 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
 
             <motion.button
               onClick={() => setShowTimestamps((v) => !v)}
-              className={`flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
+              className={`btn-physical flex h-8 w-8 items-center justify-center rounded-md ${
                 showTimestamps
-                  ? "bg-accent text-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  ? "text-foreground"
+                  : "text-muted-foreground"
               }`}
-              whileTap={{ scale: 0.9 }}
+              whileTap={{ scale: 0.95 }}
               aria-label="Toggle timestamps"
             >
               <Clock className="h-4 w-4" />
@@ -320,12 +320,12 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
               onClick={() =>
                 setViewMode((v) => (v === "paged" ? "scroll" : "paged"))
               }
-              className={`flex h-8 w-8 items-center justify-center rounded-md transition-colors ${
+              className={`btn-physical flex h-8 w-8 items-center justify-center rounded-md ${
                 viewMode === "scroll"
-                  ? "bg-accent text-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  ? "text-foreground"
+                  : "text-muted-foreground"
               }`}
-              whileTap={{ scale: 0.9 }}
+              whileTap={{ scale: 0.95 }}
               aria-label={
                 viewMode === "paged"
                   ? "Switch to scroll view"
@@ -343,8 +343,8 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
 
             <motion.button
               onClick={copyAll}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              whileTap={{ scale: 0.9 }}
+              className="btn-physical flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground"
+              whileTap={{ scale: 0.95 }}
               aria-label="Copy full transcript"
             >
               {copied ? (
@@ -419,7 +419,7 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
                 {showControls && currentPage > 0 && (
                   <motion.button
                     onClick={prevPage}
-                    className="absolute -left-14 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card p-2 text-muted-foreground shadow-sm transition-colors hover:text-foreground lg:flex"
+                    className="btn-physical absolute -left-14 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center rounded-full p-2 text-muted-foreground lg:flex"
                     initial={{ opacity: 0, x: 10 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 10 }}
@@ -433,7 +433,7 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
                 {showControls && currentPage < totalPages - 1 && (
                   <motion.button
                     onClick={nextPage}
-                    className="absolute -right-14 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center rounded-full border border-border bg-card p-2 text-muted-foreground shadow-sm transition-colors hover:text-foreground lg:flex"
+                    className="btn-physical absolute -right-14 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center rounded-full p-2 text-muted-foreground lg:flex"
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -10 }}
@@ -484,8 +484,8 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
                 <motion.button
                   onClick={prevPage}
                   disabled={currentPage === 0}
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
-                  whileTap={{ scale: 0.9 }}
+                  className="btn-physical flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground"
+                  whileTap={{ scale: 0.95 }}
                   aria-label="Previous page"
                 >
                   <ChevronLeft className="h-5 w-5" />
@@ -494,8 +494,8 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
                 <motion.button
                   onClick={nextPage}
                   disabled={currentPage >= totalPages - 1}
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:text-foreground disabled:opacity-30"
-                  whileTap={{ scale: 0.9 }}
+                  className="btn-physical flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground"
+                  whileTap={{ scale: 0.95 }}
                   aria-label="Next page"
                 >
                   <ChevronRight className="h-5 w-5" />

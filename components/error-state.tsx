@@ -18,7 +18,7 @@ export function ErrorState({ message, onBack }: ErrorStateProps) {
       transition={{ duration: 0.4 }}
     >
       <motion.div
-        className="flex h-16 w-16 items-center justify-center rounded-2xl border border-border bg-card"
+        className="btn-physical flex h-16 w-16 items-center justify-center rounded-2xl"
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ delay: 0.1, duration: 0.4 }}
@@ -46,7 +46,7 @@ export function ErrorState({ message, onBack }: ErrorStateProps) {
 
       <motion.button
         onClick={onBack}
-        className="mt-8 flex items-center gap-2 rounded-lg border border-border bg-card px-5 py-2.5 text-sm text-foreground shadow-sm transition-colors hover:bg-accent"
+        className="btn-physical mt-8 flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm text-foreground"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4, duration: 0.4 }}

@@ -61,7 +61,7 @@ export function PasteInput({ onSubmit, onDemo, isLoading }: PasteInputProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       >
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
+        <div className="btn-physical flex h-10 w-10 items-center justify-center rounded-lg !bg-primary">
           <BookOpen className="h-5 w-5 text-primary-foreground" />
         </div>
         <span className="font-serif text-2xl tracking-tight text-foreground">
@@ -139,9 +139,9 @@ export function PasteInput({ onSubmit, onDemo, isLoading }: PasteInputProps) {
             <motion.button
               type="submit"
               disabled={!url.trim() || isLoading}
-              className="relative z-10 flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground transition-colors disabled:opacity-30"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              className="btn-physical relative z-10 flex h-7 w-7 items-center justify-center rounded-md !bg-primary text-primary-foreground"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.96 }}
               aria-label="Fetch transcript"
             >
               <ArrowRight className="h-4 w-4" />
