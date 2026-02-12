@@ -18,7 +18,14 @@ export function PasteInput({ onSubmit, isLoading }: PasteInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const { theme } = useTheme();
-  const isDark = theme === "dark";
+
+  const videoForTheme: Record<string, string> = {
+    paper: "/book-animation-paper.mp4",
+    light: "/book-animation-light.mp4",
+    dark: "/book-animation.mp4",
+  };
+
+  const videoSrc = videoForTheme[theme ?? "paper"] ?? videoForTheme.paper;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -26,6 +33,15 @@ export function PasteInput({ onSubmit, isLoading }: PasteInputProps) {
     }, 800);
     return () => clearTimeout(timer);
   }, []);
+
+  // Replay video from start whenever theme (and thus video src) changes
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.load();
+      videoRef.current.playbackRate = 0.8;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [videoSrc]);
 
   // Slow down video to 80% speed
   const handleVideoReady = useCallback((el: HTMLVideoElement | null) => {
@@ -55,29 +71,19 @@ export function PasteInput({ onSubmit, isLoading }: PasteInputProps) {
       exit={{ opacity: 0, y: -40, scale: 0.98 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
     >
-      {/* Background video — dark mode only */}
-      <AnimatePresence>
-        {isDark && (
-          <motion.div
-            className="absolute inset-0 z-0"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1.2 }}
-          >
-            <video
-              ref={handleVideoReady}
-              autoPlay
-              muted
-              playsInline
-              className="h-full w-full object-cover"
-              src="/book-animation.mp4"
-            />
-            {/* Dark overlay — 90% opaque */}
-            <div className="absolute inset-0 bg-background/90" />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Background video — per-theme, replays on switch, bottom 10% cropped */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <video
+          ref={handleVideoReady}
+          autoPlay
+          muted
+          playsInline
+          className="absolute inset-0 h-[111%] w-full object-cover"
+          src={videoSrc}
+        />
+        {/* Overlay — 85% opaque, uses theme background for tinting */}
+        <div className="absolute inset-0 bg-background/85" />
+      </div>
 
       {/* Theme switcher in top-right */}
       <motion.div
