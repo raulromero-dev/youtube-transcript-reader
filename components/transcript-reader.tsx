@@ -245,7 +245,8 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
       className="flex min-h-dvh flex-col"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      exit={{ opacity: 0, y: 30 }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
     >
       {/* Top bar — liquid glass */}
       <motion.header
@@ -257,12 +258,12 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
         <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-3">
           <motion.button
             onClick={onBack}
-            className="flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
             whileHover={{ x: -2 }}
-            aria-label="Go back"
+            whileTap={{ scale: 0.9 }}
+            aria-label="Go back to paste a new video"
           >
             <ArrowLeft className="h-4 w-4" />
-            <span className="hidden sm:inline">New video</span>
           </motion.button>
 
           <div className="flex items-center gap-1">
