@@ -19,6 +19,14 @@ export function PasteInput({ onSubmit, isLoading }: PasteInputProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const { theme } = useTheme();
 
+  const videoForTheme: Record<string, string> = {
+    paper: "/book-animation-paper.mp4",
+    light: "/book-animation-light.mp4",
+    dark: "/book-animation.mp4",
+  };
+
+  const videoSrc = videoForTheme[theme ?? "paper"] ?? videoForTheme.paper;
+
   useEffect(() => {
     const timer = setTimeout(() => {
       inputRef.current?.focus();
@@ -26,13 +34,14 @@ export function PasteInput({ onSubmit, isLoading }: PasteInputProps) {
     return () => clearTimeout(timer);
   }, []);
 
-  // Replay video from start whenever theme changes
+  // Replay video from start whenever theme (and thus video src) changes
   useEffect(() => {
     if (videoRef.current) {
-      videoRef.current.currentTime = 0;
+      videoRef.current.load();
+      videoRef.current.playbackRate = 0.8;
       videoRef.current.play().catch(() => {});
     }
-  }, [theme]);
+  }, [videoSrc]);
 
   // Slow down video to 80% speed
   const handleVideoReady = useCallback((el: HTMLVideoElement | null) => {
@@ -62,15 +71,15 @@ export function PasteInput({ onSubmit, isLoading }: PasteInputProps) {
       exit={{ opacity: 0, y: -40, scale: 0.98 }}
       transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
     >
-      {/* Background video — always visible, replays on theme switch */}
-      <div className="absolute inset-0 z-0">
+      {/* Background video — per-theme, replays on switch, bottom 10% cropped */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
         <video
           ref={handleVideoReady}
           autoPlay
           muted
           playsInline
-          className="h-full w-full object-cover"
-          src="/book-animation.mp4"
+          className="absolute inset-0 h-[111%] w-full object-cover"
+          src={videoSrc}
         />
         {/* Overlay — 90% opaque, uses theme background for tinting */}
         <div className="absolute inset-0 bg-background/90" />
