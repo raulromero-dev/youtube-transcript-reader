@@ -376,47 +376,66 @@ async function cleanTranscriptWithAI(
 
     console.log("[v0] AI cleanup: Sending", paragraphs.length, "paragraphs to gemini-2.0-flash-lite");
 
+    // Use the first timestamp of each original paragraph for reference
+    const timestampMap = paragraphs.map((p) => p.timestamp);
+
     const { text } = await generateText({
       model: "google/gemini-2.0-flash-lite",
-      prompt: `You are a transcript cleaner. Your ONLY job is to clean up raw YouTube transcript text.
+      prompt: `You are a transcript editor. Clean up and restructure raw YouTube transcript text so it reads like a well-formatted article or book passage.
 
-Rules:
+Rules for CLEANING:
 - Remove filler artifacts: [music], [applause], [laughter], >>>, ---, ♪, etc.
 - Fix excessive spacing (multiple spaces, random line breaks mid-sentence)
 - Fix obvious OCR/ASR errors when the correction is unambiguous
-- Merge fragments that were clearly split mid-sentence
 - Remove duplicate consecutive phrases (common ASR stutter)
-- Preserve the EXACT meaning — never add, rephrase, or summarize
-- Preserve all paragraph numbering [0], [1], [2], etc. exactly as given
-- Return ONLY the cleaned paragraphs in the same [index] format, nothing else
+- Preserve the EXACT meaning — never add, rephrase, summarize, or editorialize
+
+Rules for RESTRUCTURING:
+- Break the text into natural, logical paragraphs based on topic shifts, speaker pauses, or changes in idea
+- Merge fragments that were split mid-sentence across paragraph boundaries
+- Each paragraph should be a coherent thought or section (aim for 2-6 sentences each)
+- The total number of output paragraphs can differ from the input — use as many as makes sense for readability
+
+Output format — return ONLY numbered paragraphs like this, nothing else:
+[0] First paragraph text here.
+[1] Second paragraph text here.
+[2] Third paragraph text here.
+
+The available timestamps for reference are: ${timestampMap.join(", ")}
 
 Transcript:
 ${rawText}`,
     });
 
-    // Parse the cleaned text back into paragraphs
-    const cleaned = new Map<number, string>();
+    // Parse the restructured paragraphs
+    const result: Paragraph[] = [];
     const lineRegex = /\[(\d+)\]\s*([\s\S]*?)(?=\n\[|\n*$)/g;
     let match: RegExpExecArray | null;
     while ((match = lineRegex.exec(text)) !== null) {
-      const idx = parseInt(match[1]);
       const cleanedText = match[2].trim();
       if (cleanedText) {
-        cleaned.set(idx, cleanedText);
+        // Map output paragraph index to a reasonable timestamp
+        const outputIdx = result.length;
+        const ratio = paragraphs.length / Math.max(result.length + 1, 1);
+        const sourceIdx = Math.min(
+          Math.floor(outputIdx * ratio),
+          paragraphs.length - 1
+        );
+        result.push({
+          text: cleanedText,
+          timestamp: paragraphs[sourceIdx]?.timestamp ?? timestampMap[0],
+        });
       }
     }
 
-    console.log("[v0] AI cleanup: Parsed", cleaned.size, "cleaned paragraphs");
+    console.log("[v0] AI cleanup: Restructured into", result.length, "paragraphs");
 
-    if (cleaned.size < paragraphs.length * 0.5) {
+    if (result.length < 3) {
       console.log("[v0] AI cleanup: Too few results, using originals");
       return paragraphs;
     }
 
-    return paragraphs.map((p, i) => ({
-      ...p,
-      text: cleaned.get(i) ?? p.text,
-    }));
+    return result;
   } catch (e) {
     console.log(
       "[v0] AI cleanup failed, using raw transcript:",
