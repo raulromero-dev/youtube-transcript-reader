@@ -364,7 +364,7 @@ async function fetchViaYouTube(
   }
 }
 
-// ─── AI cleanup via Gemma ──────────────────────────────────
+// ─── AI cleanup via Gemini Flash Lite ──────────────────────
 
 async function cleanTranscriptWithAI(
   paragraphs: Paragraph[]
@@ -374,10 +374,10 @@ async function cleanTranscriptWithAI(
       .map((p, i) => `[${i}] ${p.text}`)
       .join("\n");
 
-    console.log("[v0] Gemma cleanup: Sending", paragraphs.length, "paragraphs");
+    console.log("[v0] AI cleanup: Sending", paragraphs.length, "paragraphs to gemini-2.0-flash-lite");
 
     const { text } = await generateText({
-      model: "google/gemma-3-12b-it",
+      model: "google/gemini-2.0-flash-lite",
       prompt: `You are a transcript cleaner. Your ONLY job is to clean up raw YouTube transcript text.
 
 Rules:
@@ -406,10 +406,10 @@ ${rawText}`,
       }
     }
 
-    console.log("[v0] Gemma cleanup: Parsed", cleaned.size, "cleaned paragraphs");
+    console.log("[v0] AI cleanup: Parsed", cleaned.size, "cleaned paragraphs");
 
     if (cleaned.size < paragraphs.length * 0.5) {
-      console.log("[v0] Gemma cleanup: Too few results, using originals");
+      console.log("[v0] AI cleanup: Too few results, using originals");
       return paragraphs;
     }
 
@@ -419,7 +419,7 @@ ${rawText}`,
     }));
   } catch (e) {
     console.log(
-      "[v0] Gemma cleanup failed, using raw transcript:",
+      "[v0] AI cleanup failed, using raw transcript:",
       e instanceof Error ? e.message : e
     );
     return paragraphs;
