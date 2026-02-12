@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { generateText } from "ai";
 
 // ─── Helpers ───────────────────────────────────────────────
 
@@ -363,6 +364,68 @@ async function fetchViaYouTube(
   }
 }
 
+// ─── AI cleanup via Gemma ──────────────────────────────────
+
+async function cleanTranscriptWithAI(
+  paragraphs: Paragraph[]
+): Promise<Paragraph[]> {
+  try {
+    const rawText = paragraphs
+      .map((p, i) => `[${i}] ${p.text}`)
+      .join("\n");
+
+    console.log("[v0] Gemma cleanup: Sending", paragraphs.length, "paragraphs");
+
+    const { text } = await generateText({
+      model: "google/gemma-3-12b-it",
+      prompt: `You are a transcript cleaner. Your ONLY job is to clean up raw YouTube transcript text.
+
+Rules:
+- Remove filler artifacts: [music], [applause], [laughter], >>>, ---, ♪, etc.
+- Fix excessive spacing (multiple spaces, random line breaks mid-sentence)
+- Fix obvious OCR/ASR errors when the correction is unambiguous
+- Merge fragments that were clearly split mid-sentence
+- Remove duplicate consecutive phrases (common ASR stutter)
+- Preserve the EXACT meaning — never add, rephrase, or summarize
+- Preserve all paragraph numbering [0], [1], [2], etc. exactly as given
+- Return ONLY the cleaned paragraphs in the same [index] format, nothing else
+
+Transcript:
+${rawText}`,
+    });
+
+    // Parse the cleaned text back into paragraphs
+    const cleaned = new Map<number, string>();
+    const lineRegex = /\[(\d+)\]\s*([\s\S]*?)(?=\n\[|\n*$)/g;
+    let match: RegExpExecArray | null;
+    while ((match = lineRegex.exec(text)) !== null) {
+      const idx = parseInt(match[1]);
+      const cleanedText = match[2].trim();
+      if (cleanedText) {
+        cleaned.set(idx, cleanedText);
+      }
+    }
+
+    console.log("[v0] Gemma cleanup: Parsed", cleaned.size, "cleaned paragraphs");
+
+    if (cleaned.size < paragraphs.length * 0.5) {
+      console.log("[v0] Gemma cleanup: Too few results, using originals");
+      return paragraphs;
+    }
+
+    return paragraphs.map((p, i) => ({
+      ...p,
+      text: cleaned.get(i) ?? p.text,
+    }));
+  } catch (e) {
+    console.log(
+      "[v0] Gemma cleanup failed, using raw transcript:",
+      e instanceof Error ? e.message : e
+    );
+    return paragraphs;
+  }
+}
+
 // ─── Route handler ─────────────────────────────────────────
 
 export async function GET(request: NextRequest) {
@@ -397,7 +460,10 @@ export async function GET(request: NextRequest) {
       throw new Error("No caption tracks available for this video");
     }
 
-    const paragraphs = groupIntoParagraphs(result.entries);
+    const rawParagraphs = groupIntoParagraphs(result.entries);
+
+    // Clean up via Gemma (non-blocking — falls back to raw on failure)
+    const paragraphs = await cleanTranscriptWithAI(rawParagraphs);
 
     // Title via oEmbed
     let title = "Untitled Video";
