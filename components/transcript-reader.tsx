@@ -414,40 +414,39 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
             >
-              {/* Navigation arrows */}
-              <AnimatePresence>
-                {showControls && currentPage > 0 && (
-                  <motion.button
-                    onClick={prevPage}
-                    className="btn-physical absolute -left-14 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center rounded-full p-2 text-muted-foreground lg:flex"
-                    initial={{ opacity: 0, x: 10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 10 }}
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    aria-label="Previous page"
-                  >
-                    <ChevronLeft className="h-5 w-5" />
-                  </motion.button>
-                )}
-                {showControls && currentPage < totalPages - 1 && (
-                  <motion.button
-                    onClick={nextPage}
-                    className="btn-physical absolute -right-14 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center rounded-full p-2 text-muted-foreground lg:flex"
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    aria-label="Next page"
-                  >
-                    <ChevronRight className="h-5 w-5" />
-                  </motion.button>
-                )}
-              </AnimatePresence>
-
-              {/* The page card */}
-              <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+              {/* The page card — with nav arrows positioned relative to it */}
+              <div className="relative rounded-xl border border-border bg-card shadow-sm">
+                <AnimatePresence>
+                  {showControls && currentPage > 0 && (
+                    <motion.button
+                      onClick={prevPage}
+                      className="btn-physical absolute -left-14 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center rounded-full p-2 text-muted-foreground lg:flex"
+                      initial={{ opacity: 0, x: 10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 10 }}
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      aria-label="Previous page"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </motion.button>
+                  )}
+                  {showControls && currentPage < totalPages - 1 && (
+                    <motion.button
+                      onClick={nextPage}
+                      className="btn-physical absolute -right-14 top-1/2 z-10 hidden -translate-y-1/2 items-center justify-center rounded-full p-2 text-muted-foreground lg:flex"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -10 }}
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      aria-label="Next page"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </motion.button>
+                  )}
+                </AnimatePresence>
+                <div className="overflow-hidden rounded-xl">
                 <AnimatePresence mode="wait" custom={direction}>
                   <motion.div
                     key={currentPage}
@@ -477,6 +476,7 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
                     </div>
                   </motion.div>
                 </AnimatePresence>
+                </div>
               </div>
 
               {/* Mobile navigation */}
