@@ -89,17 +89,17 @@ export function PasteInput({ onSubmit, isLoading }: PasteInputProps) {
         <ThemeSwitcher />
       </motion.div>
 
-      {/* Brand mark */}
+      {/* Brand mark — pinned top-left on mobile, centered on desktop */}
       <motion.div
-        className="relative z-10 mb-16 flex items-center gap-3"
-        initial={{ opacity: 0, y: 20 }}
+        className="absolute left-5 top-6 z-10 flex items-center gap-2 md:relative md:inset-auto md:mb-16 md:gap-3"
+        initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       >
-        <div className="btn-physical-primary flex h-10 w-10 items-center justify-center rounded-lg">
-          <BookOpen className="h-5 w-5" />
+        <div className="btn-physical-primary flex h-7 w-7 items-center justify-center rounded-md md:h-10 md:w-10 md:rounded-lg">
+          <BookOpen className="h-3.5 w-3.5 md:h-5 md:w-5" />
         </div>
-        <span className="font-serif text-2xl tracking-tight text-foreground">
+        <span className="font-serif text-base tracking-tight text-foreground md:text-2xl">
           Transcript
         </span>
       </motion.div>
