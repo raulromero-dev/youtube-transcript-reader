@@ -1,0 +1,37 @@
+import type { Metadata, Viewport } from 'next'
+import { Instrument_Serif, Inter } from 'next/font/google'
+
+import './globals.css'
+
+const instrumentSerif = Instrument_Serif({
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-serif',
+})
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-sans',
+})
+
+export const metadata: Metadata = {
+  title: 'Transcript Reader — Paste a video, read the words',
+  description:
+    'Transform any YouTube video into a beautifully formatted, readable transcript. Paste a link, read the words.',
+}
+
+export const viewport: Viewport = {
+  themeColor: '#f5f0e8',
+}
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode
+}>) {
+  return (
+    <html lang="en" className={`${instrumentSerif.variable} ${inter.variable}`}>
+      <body className="font-sans antialiased">{children}</body>
+    </html>
+  )
+}
