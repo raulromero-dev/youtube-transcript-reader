@@ -107,6 +107,122 @@
   }
 }
 
+/* TE-inspired physical buttons — machined, beveled, tactile */
+.btn-physical {
+  position: relative;
+  border: 1px solid hsla(var(--border) / 0.8);
+  background: linear-gradient(
+    180deg,
+    hsla(var(--card) / 1) 0%,
+    hsla(var(--muted) / 1) 100%
+  );
+  color: hsl(var(--foreground));
+  box-shadow:
+    0 1px 0 hsla(var(--background) / 0.7),
+    0 -0.5px 0 hsla(var(--foreground) / 0.06) inset,
+    0 1px 2px hsla(var(--foreground) / 0.06),
+    0 0.5px 0 hsla(var(--background) / 0.9) inset;
+  transition: box-shadow 0.12s ease, transform 0.1s ease, background 0.15s ease;
+}
+.btn-physical:hover {
+  box-shadow:
+    0 1px 0 hsla(var(--background) / 0.7),
+    0 -0.5px 0 hsla(var(--foreground) / 0.08) inset,
+    0 2px 4px hsla(var(--foreground) / 0.08),
+    0 0.5px 0 hsla(var(--background) / 0.9) inset;
+}
+.btn-physical:active {
+  transform: translateY(0.5px);
+  box-shadow:
+    0 0px 0 hsla(var(--background) / 0.5),
+    0 1px 1px hsla(var(--foreground) / 0.1) inset,
+    0 0.5px 0 hsla(var(--foreground) / 0.04);
+  background: linear-gradient(
+    180deg,
+    hsla(var(--muted) / 1) 0%,
+    hsla(var(--card) / 1) 100%
+  );
+}
+.btn-physical:disabled {
+  opacity: 0.3;
+  box-shadow:
+    0 1px 0 hsla(var(--background) / 0.5),
+    0 0.5px 0 hsla(var(--background) / 0.6) inset;
+}
+
+/* Dark mode adjustments for physical buttons */
+[data-theme="dark"] .btn-physical {
+  border-color: hsla(var(--foreground) / 0.12);
+  background: linear-gradient(
+    180deg,
+    hsla(var(--foreground) / 0.1) 0%,
+    hsla(var(--foreground) / 0.05) 100%
+  );
+  color: hsl(var(--foreground));
+  box-shadow:
+    0 1px 0 hsla(var(--background) / 0.4),
+    0 -0.5px 0 hsla(var(--foreground) / 0.06) inset,
+    0 1px 2px hsla(0 0% 0% / 0.2),
+    0 0.5px 0 hsla(var(--foreground) / 0.08) inset;
+}
+[data-theme="dark"] .btn-physical:hover {
+  background: linear-gradient(
+    180deg,
+    hsla(var(--foreground) / 0.14) 0%,
+    hsla(var(--foreground) / 0.08) 100%
+  );
+  box-shadow:
+    0 1px 0 hsla(var(--background) / 0.4),
+    0 -0.5px 0 hsla(var(--foreground) / 0.08) inset,
+    0 2px 6px hsla(0 0% 0% / 0.25),
+    0 0.5px 0 hsla(var(--foreground) / 0.08) inset;
+}
+[data-theme="dark"] .btn-physical:active {
+  box-shadow:
+    0 0px 0 hsla(var(--background) / 0.3),
+    0 1px 2px hsla(0 0% 0% / 0.3) inset,
+    0 0.5px 0 hsla(0 0% 0% / 0.1);
+  background: linear-gradient(
+    180deg,
+    hsla(var(--foreground) / 0.05) 0%,
+    hsla(var(--foreground) / 0.1) 100%
+  );
+}
+
+/* Inverted physical button (primary accent — for brand/submit) */
+.btn-physical-primary {
+  position: relative;
+  border: 1px solid hsla(var(--foreground) / 0.15);
+  background: linear-gradient(
+    180deg,
+    hsl(var(--foreground)) 0%,
+    hsla(var(--foreground) / 0.88) 100%
+  );
+  color: hsl(var(--background));
+  box-shadow:
+    0 1px 0 hsla(var(--background) / 0.3),
+    0 -0.5px 0 hsla(var(--background) / 0.1) inset,
+    0 1px 3px hsla(var(--foreground) / 0.15),
+    0 0.5px 0 hsla(var(--background) / 0.15) inset;
+  transition: box-shadow 0.12s ease, transform 0.1s ease, background 0.15s ease;
+}
+.btn-physical-primary:hover {
+  box-shadow:
+    0 1px 0 hsla(var(--background) / 0.3),
+    0 -0.5px 0 hsla(var(--background) / 0.12) inset,
+    0 2px 6px hsla(var(--foreground) / 0.2),
+    0 0.5px 0 hsla(var(--background) / 0.15) inset;
+}
+.btn-physical-primary:active {
+  transform: translateY(0.5px);
+  box-shadow:
+    0 0px 0 hsla(var(--background) / 0.2),
+    0 1px 1px hsla(0 0% 0% / 0.2) inset;
+}
+.btn-physical-primary:disabled {
+  opacity: 0.3;
+}
+
 /* Liquid glass top bar */
 .glass-bar {
   background: hsla(var(--background) / 0.55);

@@ -6,7 +6,6 @@ import { PasteInput } from "@/components/paste-input";
 import { LoadingState } from "@/components/loading-state";
 import { TranscriptReader } from "@/components/transcript-reader";
 import { ErrorState } from "@/components/error-state";
-import { DEMO_TRANSCRIPT } from "@/lib/demo-transcript";
 
 type AppState = "input" | "loading" | "reading" | "error";
 
@@ -57,14 +56,6 @@ export default function Home() {
     }
   }, []);
 
-  const loadDemo = useCallback(() => {
-    setState("loading");
-    setTimeout(() => {
-      setTranscriptData(DEMO_TRANSCRIPT);
-      setState("reading");
-    }, 1200);
-  }, []);
-
   const goBack = useCallback(() => {
     setState("input");
     setTranscriptData(null);
@@ -78,7 +69,6 @@ export default function Home() {
           <PasteInput
             key="input"
             onSubmit={fetchTranscript}
-            onDemo={loadDemo}
             isLoading={false}
           />
         )}

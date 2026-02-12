@@ -2,16 +2,15 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, BookOpen, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpen } from "lucide-react";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 
 interface PasteInputProps {
   onSubmit: (url: string) => void;
-  onDemo: () => void;
   isLoading: boolean;
 }
 
-export function PasteInput({ onSubmit, onDemo, isLoading }: PasteInputProps) {
+export function PasteInput({ onSubmit, isLoading }: PasteInputProps) {
   const [url, setUrl] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [hasPasted, setHasPasted] = useState(false);
@@ -61,8 +60,8 @@ export function PasteInput({ onSubmit, onDemo, isLoading }: PasteInputProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       >
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-          <BookOpen className="h-5 w-5 text-primary-foreground" />
+        <div className="btn-physical-primary flex h-10 w-10 items-center justify-center rounded-lg">
+          <BookOpen className="h-5 w-5" />
         </div>
         <span className="font-serif text-2xl tracking-tight text-foreground">
           Transcript
@@ -90,8 +89,7 @@ export function PasteInput({ onSubmit, onDemo, isLoading }: PasteInputProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.45, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       >
-        Transform any YouTube video into a beautifully formatted transcript.
-        Like reading a book.
+        Transform any YouTube video into a book.
       </motion.p>
 
       {/* Input area */}
@@ -139,9 +137,9 @@ export function PasteInput({ onSubmit, onDemo, isLoading }: PasteInputProps) {
             <motion.button
               type="submit"
               disabled={!url.trim() || isLoading}
-              className="relative z-10 flex h-7 w-7 items-center justify-center rounded-md bg-primary text-primary-foreground transition-colors disabled:opacity-30"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              className="btn-physical-primary relative z-10 flex h-7 w-7 items-center justify-center rounded-md"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.96 }}
               aria-label="Fetch transcript"
             >
               <ArrowRight className="h-4 w-4" />
@@ -150,24 +148,15 @@ export function PasteInput({ onSubmit, onDemo, isLoading }: PasteInputProps) {
         </div>
       </motion.form>
 
-      {/* Demo + hint */}
-      <motion.div
-        className="mt-6 flex flex-col items-center gap-2"
+      {/* Hint */}
+      <motion.p
+        className="mt-6 text-xs text-muted-foreground/40"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1, duration: 0.8 }}
       >
-        <button
-          onClick={onDemo}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <Sparkles className="h-3.5 w-3.5" />
-          Try a demo transcript
-        </button>
-        <p className="text-xs text-muted-foreground/40">
-          Works with any video that has captions enabled
-        </p>
-      </motion.div>
+        Works with any video that has captions enabled
+      </motion.p>
     </motion.div>
   );
 }
