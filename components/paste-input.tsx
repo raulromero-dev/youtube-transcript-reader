@@ -71,7 +71,8 @@ export function PasteInput({ onSubmit, onDemo, isLoading }: PasteInputProps) {
 
       {/* Main heading */}
       <motion.h1
-        className="mb-4 text-center font-serif text-5xl font-medium tracking-tight text-foreground md:text-7xl"
+        className="mb-4 text-center font-serif text-6xl font-medium text-foreground md:text-8xl"
+        style={{ letterSpacing: "-0.035em" }}
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
@@ -84,7 +85,7 @@ export function PasteInput({ onSubmit, onDemo, isLoading }: PasteInputProps) {
       </motion.h1>
 
       <motion.p
-        className="mb-12 max-w-md text-center text-base leading-relaxed text-muted-foreground"
+        className="mb-12 max-w-lg text-center text-lg leading-relaxed text-muted-foreground"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.45, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
@@ -110,7 +111,7 @@ export function PasteInput({ onSubmit, onDemo, isLoading }: PasteInputProps) {
             }}
             transition={{ duration: 0.3 }}
           />
-          <div className="relative flex items-center gap-2 rounded-xl border border-border bg-card px-5 py-4 shadow-sm transition-shadow duration-300 hover:shadow-md">
+          <div className="relative flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 shadow-sm transition-shadow duration-300 hover:shadow-md">
             <AnimatePresence mode="wait">
               {hasPasted && (
                 <motion.div
@@ -131,14 +132,14 @@ export function PasteInput({ onSubmit, onDemo, isLoading }: PasteInputProps) {
               onBlur={() => setIsFocused(false)}
               onPaste={handlePaste}
               placeholder="Paste a YouTube link..."
-              className="relative z-10 flex-1 bg-transparent text-lg text-foreground outline-none placeholder:text-muted-foreground/50"
+              className="relative z-10 flex-1 bg-transparent text-base text-foreground outline-none placeholder:text-muted-foreground/50"
               disabled={isLoading}
               aria-label="YouTube video URL"
             />
             <motion.button
               type="submit"
               disabled={!url.trim() || isLoading}
-              className="relative z-10 flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors disabled:opacity-30"
+              className="relative z-10 flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-colors disabled:opacity-30"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               aria-label="Fetch transcript"

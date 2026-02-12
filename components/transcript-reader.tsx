@@ -44,13 +44,13 @@ const PARAGRAPHS_PER_PAGE = 4;
 function AnimatedWord({
   word,
   index,
-  paragraphDelay,
+  baseDelay,
 }: {
   word: string;
   index: number;
-  paragraphDelay: number;
+  baseDelay: number;
 }) {
-  const delay = paragraphDelay + index * 0.035;
+  const delay = baseDelay + index * 0.03;
 
   return (
     <motion.span
@@ -59,13 +59,30 @@ function AnimatedWord({
       animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
       transition={{
         delay,
-        duration: 0.5,
+        duration: 0.45,
         ease: [0.22, 1, 0.36, 1],
       }}
     >
       {word}&nbsp;
     </motion.span>
   );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Calculate cumulative delay for sequential paragraph animation      */
+/* ------------------------------------------------------------------ */
+function getCumulativeDelay(
+  paragraphs: Paragraph[],
+  upToIndex: number,
+  initialOffset: number
+): number {
+  let total = initialOffset;
+  for (let i = 0; i < upToIndex; i++) {
+    const wordCount = paragraphs[i].text.split(/\s+/).length;
+    // Each paragraph: its words * 0.03s stagger + 0.45s for last word to finish + 0.15s gap
+    total += wordCount * 0.03 + 0.45 + 0.15;
+  }
+  return total;
 }
 
 /* ------------------------------------------------------------------ */
@@ -77,18 +94,18 @@ function RevealParagraph({
   showTimestamps,
   fontSizeClass,
   isFirstReveal,
+  cumulativeDelay,
 }: {
   paragraph: Paragraph;
   paragraphIndex: number;
   showTimestamps: boolean;
   fontSizeClass: string;
   isFirstReveal: boolean;
+  cumulativeDelay: number;
 }) {
   const words = useMemo(() => paragraph.text.split(/\s+/), [paragraph.text]);
-  const paragraphDelay = isFirstReveal ? 0.3 + paragraphIndex * 0.4 : 0.05 + paragraphIndex * 0.06;
 
   if (!isFirstReveal) {
-    // After first reveal, use simpler slide-in per paragraph
     return (
       <motion.div
         initial={{ opacity: 0, y: 14 }}
@@ -115,14 +132,14 @@ function RevealParagraph({
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ delay: paragraphDelay - 0.1, duration: 0.2 }}
+      transition={{ delay: Math.max(0, cumulativeDelay - 0.1), duration: 0.2 }}
     >
       {showTimestamps && (
         <motion.span
           className="mb-2 inline-block font-sans text-xs uppercase tracking-widest text-muted-foreground/60"
           initial={{ opacity: 0, filter: "blur(4px)" }}
           animate={{ opacity: 1, filter: "blur(0px)" }}
-          transition={{ delay: paragraphDelay - 0.05, duration: 0.4 }}
+          transition={{ delay: cumulativeDelay, duration: 0.35 }}
         >
           {paragraph.timestamp}
         </motion.span>
@@ -133,7 +150,7 @@ function RevealParagraph({
             key={`${paragraphIndex}-${wi}`}
             word={word}
             index={wi}
-            paragraphDelay={paragraphDelay}
+            baseDelay={cumulativeDelay}
           />
         ))}
       </p>
@@ -166,12 +183,9 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
   // After the first page reveal completes, disable the fancy word animation
   useEffect(() => {
     if (isFirstReveal) {
-      const maxWords = currentParagraphs.reduce(
-        (acc, p) => acc + p.text.split(/\s+/).length,
-        0
-      );
-      const totalDuration =
-        (0.3 + (currentParagraphs.length - 1) * 0.4 + maxWords * 0.035 + 0.5) * 1000;
+      const lastParaDelay = getCumulativeDelay(currentParagraphs, currentParagraphs.length - 1, 0.3);
+      const lastParaWords = currentParagraphs[currentParagraphs.length - 1]?.text.split(/\s+/).length ?? 0;
+      const totalDuration = (lastParaDelay + lastParaWords * 0.03 + 0.45 + 0.5) * 1000;
       const timer = setTimeout(() => setIsFirstReveal(false), totalDuration);
       return () => clearTimeout(timer);
     }
@@ -370,7 +384,8 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
           transition={{ delay: 0.1, duration: 0.6 }}
         >
           <motion.h1
-            className="mb-2 text-balance font-serif text-2xl font-medium tracking-tight text-foreground md:text-3xl"
+            className="mb-2 text-balance font-serif text-3xl font-medium text-foreground md:text-4xl"
+            style={{ letterSpacing: "-0.03em" }}
             initial={{ opacity: 0, filter: "blur(10px)", y: 12 }}
             animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
             transition={{ delay: 0.15, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
@@ -455,6 +470,7 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
                           showTimestamps={showTimestamps}
                           fontSizeClass={fontSizeClasses[fontSize]}
                           isFirstReveal={isFirstReveal && currentPage === 0}
+                          cumulativeDelay={getCumulativeDelay(currentParagraphs, i, 0.3)}
                         />
                       ))}
                     </div>
@@ -530,6 +546,7 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
                       showTimestamps={showTimestamps}
                       fontSizeClass={fontSizeClasses[fontSize]}
                       isFirstReveal={isFirstReveal}
+                      cumulativeDelay={getCumulativeDelay(data.paragraphs, i, 0.3)}
                     />
                   ))}
                 </div>
