@@ -27,10 +27,10 @@ export function PasteInput({ onSubmit, isLoading }: PasteInputProps) {
     return () => clearTimeout(timer);
   }, []);
 
-  // Slow down video to 10% speed
+  // Slow down video to 25% speed
   const handleVideoReady = useCallback((el: HTMLVideoElement | null) => {
     if (el) {
-      el.playbackRate = 0.1;
+      el.playbackRate = 0.25;
       videoRef.current = el;
     }
   }, []);
@@ -74,8 +74,8 @@ export function PasteInput({ onSubmit, isLoading }: PasteInputProps) {
               className="h-full w-full object-cover"
               src="/book-animation.mp4"
             />
-            {/* Dark overlay — 60% opaque */}
-            <div className="absolute inset-0 bg-background/60" />
+            {/* Dark overlay — 80% opaque */}
+            <div className="absolute inset-0 bg-background/80" />
           </motion.div>
         )}
       </AnimatePresence>
