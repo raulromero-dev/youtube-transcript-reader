@@ -27,10 +27,10 @@ export function PasteInput({ onSubmit, isLoading }: PasteInputProps) {
     return () => clearTimeout(timer);
   }, []);
 
-  // Slow down video to 25% speed
+  // Slow down video to 90% speed
   const handleVideoReady = useCallback((el: HTMLVideoElement | null) => {
     if (el) {
-      el.playbackRate = 0.25;
+      el.playbackRate = 0.9;
       videoRef.current = el;
     }
   }, []);
