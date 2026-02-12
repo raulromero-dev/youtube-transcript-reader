@@ -81,8 +81,8 @@ export function PasteInput({ onSubmit, isLoading }: PasteInputProps) {
           className="absolute inset-0 h-[111%] w-full object-cover"
           src={videoSrc}
         />
-        {/* Overlay — 90% opaque, uses theme background for tinting */}
-        <div className="absolute inset-0 bg-background/90" />
+        {/* Overlay — 85% opaque, uses theme background for tinting */}
+        <div className="absolute inset-0 bg-background/85" />
       </div>
 
       {/* Theme switcher in top-right */}
