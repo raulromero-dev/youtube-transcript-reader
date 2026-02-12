@@ -42,7 +42,7 @@ function decodeEntities(text: string): string {
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
-// ─── Caption entry ─────────────────────────────────────────
+// ─── Caption types & parsers ───────────────────────────────
 
 interface CaptionEntry {
   text: string;
@@ -50,7 +50,7 @@ interface CaptionEntry {
   duration: number;
 }
 
-// Parse srv3 XML:  <p t="ms" d="ms">text or <s>word</s> children</p>
+// srv3 format: <p t="ms" d="ms">text or <s>word</s> children</p>
 function parseSrv3(xml: string): CaptionEntry[] {
   const entries: CaptionEntry[] = [];
   const re = /<p\s+t="(\d+)"\s+d="(\d+)"[^>]*>([\s\S]*?)<\/p>/g;
@@ -68,10 +68,11 @@ function parseSrv3(xml: string): CaptionEntry[] {
   return entries;
 }
 
-// Parse standard XML:  <text start="s" dur="s">text</text>
+// Standard format: <text start="s" dur="s">text</text>
 function parseStandard(xml: string): CaptionEntry[] {
   const entries: CaptionEntry[] = [];
-  const re = /<text\s+start="([^"]*)"(?:\s+dur="([^"]*)")?[^>]*>([\s\S]*?)<\/text>/g;
+  const re =
+    /<text\s+start="([^"]*)"(?:\s+dur="([^"]*)")?[^>]*>([\s\S]*?)<\/text>/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(xml)) !== null) {
     const text = decodeEntities(m[3].replace(/<[^>]+>/g, "").trim());
@@ -129,16 +130,7 @@ function groupIntoParagraphs(segments: CaptionEntry[]): Paragraph[] {
   return out;
 }
 
-// ─── Core fetch ────────────────────────────────────────────
-//
-// Strategy: ANDROID Innertube client.
-//
-// Why ANDROID? The WEB client's caption URLs have ip=0.0.0.0 and
-// return 200 with empty body from server-side. ANDROID returns fresh
-// signed URLs that actually deliver data.
-//
-// We also collect session cookies from the initial page fetch
-// to avoid bot-detection blocks.
+// ─── Track selection ───────────────────────────────────────
 
 interface CaptionTrack {
   languageCode: string;
@@ -147,127 +139,299 @@ interface CaptionTrack {
   name?: { simpleText?: string };
 }
 
-async function fetchTranscript(
-  videoId: string,
-  lang = "en"
-): Promise<{ entries: CaptionEntry[]; language: string }> {
-  console.log("[v0] Fetching transcript for:", videoId);
-
-  // 1. Fetch page to collect session cookies
-  const pageRes = await fetch(
-    `https://www.youtube.com/watch?v=${videoId}`,
-    {
-      headers: {
-        "User-Agent": UA,
-        "Accept-Language": "en-US,en;q=0.9",
-        Cookie: "CONSENT=YES+1",
-      },
-    }
+function pickTrack(tracks: CaptionTrack[], lang = "en"): CaptionTrack {
+  return (
+    tracks.find((t) => t.languageCode === lang && t.kind !== "asr") ??
+    tracks.find((t) => t.languageCode === lang) ??
+    tracks.find((t) => t.languageCode.startsWith(lang) && t.kind !== "asr") ??
+    tracks.find((t) => t.languageCode.startsWith(lang)) ??
+    tracks.find((t) => t.kind !== "asr") ??
+    tracks[0]
   );
-  if (!pageRes.ok) throw new Error(`Page fetch failed: ${pageRes.status}`);
+}
 
-  const setCookies = pageRes.headers.getSetCookie?.() ?? [];
-  const cookies = ["CONSENT=YES+1", ...setCookies.map((c) => c.split(";")[0])];
-  const cookieStr = cookies.join("; ");
-  const html = await pageRes.text();
+// ─── Session: fetch page, extract cookies + visitorData ────
 
-  const apiKeyMatch = html.match(/"INNERTUBE_API_KEY":"([^"]+)"/);
+interface PageSession {
+  cookies: string;
+  apiKey: string;
+  visitorData: string;
+  html: string;
+}
+
+async function getPageSession(videoId: string): Promise<PageSession> {
+  console.log("[v0] Fetching page session for:", videoId);
+
+  const res = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+    headers: {
+      "User-Agent": UA,
+      "Accept-Language": "en-US,en;q=0.9",
+      Accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      Cookie: "CONSENT=PENDING+987",
+    },
+    redirect: "follow",
+  });
+
+  if (!res.ok) throw new Error(`Page fetch failed: ${res.status}`);
+
+  const setCookies = res.headers.getSetCookie?.() ?? [];
+  const cookieParts = setCookies.map((c) => c.split(";")[0]);
+  cookieParts.push("CONSENT=PENDING+987");
+  const cookies = cookieParts.join("; ");
+
+  const html = await res.text();
+
+  // Extract visitorData — YouTube embeds this in the page config
+  const vdMatch =
+    html.match(/"visitorData":"([^"]+)"/) ??
+    html.match(/visitorData%22%3A%22([^%]+)/);
+  const visitorData = vdMatch?.[1] ?? "";
+
+  // Extract API key
+  const akMatch = html.match(/"INNERTUBE_API_KEY":"([^"]+)"/);
   const apiKey =
-    apiKeyMatch?.[1] || "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8";
+    akMatch?.[1] ?? "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8";
 
-  console.log("[v0] Page fetched, cookies:", cookies.length, "API key found:", !!apiKeyMatch);
+  console.log(
+    "[v0] Session: cookies=",
+    cookieParts.length,
+    "visitorData=",
+    visitorData.length > 0 ? visitorData.slice(0, 20) + "..." : "(none)",
+    "apiKey=",
+    apiKey.slice(0, 12) + "..."
+  );
 
-  // 2. ANDROID Innertube player
-  const playerRes = await fetch(
-    `https://www.youtube.com/youtubei/v1/player?key=${apiKey}&prettyPrint=false`,
+  return { cookies, apiKey, visitorData, html };
+}
+
+// ─── Strategy 1: Extract from page HTML ────────────────────
+
+function extractTracksFromHtml(html: string): CaptionTrack[] | null {
+  // Find ytInitialPlayerResponse and extract captionTracks with a targeted regex
+  const tracksMatch = html.match(
+    /"captionTracks"\s*:\s*(\[[\s\S]*?\])\s*,\s*"/
+  );
+  if (!tracksMatch) {
+    console.log("[v0] Strategy 1: No captionTracks in HTML");
+    return null;
+  }
+
+  try {
+    // The JSON might have unicode escapes — parse it
+    const tracks = JSON.parse(tracksMatch[1]) as CaptionTrack[];
+    console.log(
+      "[v0] Strategy 1: Found",
+      tracks.length,
+      "tracks in HTML:",
+      tracks.map((t) => `${t.languageCode}(${t.kind ?? "manual"})`).join(", ")
+    );
+    return tracks.length > 0 ? tracks : null;
+  } catch (e) {
+    console.log("[v0] Strategy 1: Failed to parse captionTracks JSON:", e);
+    return null;
+  }
+}
+
+// ─── Strategy 2: ANDROID Innertube player API ──────────────
+
+async function fetchTracksViaInnertube(
+  videoId: string,
+  session: PageSession
+): Promise<CaptionTrack[] | null> {
+  console.log("[v0] Strategy 2: ANDROID Innertube player API");
+
+  const body = {
+    context: {
+      client: {
+        clientName: "ANDROID",
+        clientVersion: "19.09.37",
+        androidSdkVersion: 30,
+        hl: "en",
+        gl: "US",
+        ...(session.visitorData
+          ? { visitorData: session.visitorData }
+          : {}),
+      },
+    },
+    videoId,
+  };
+
+  const res = await fetch(
+    `https://www.youtube.com/youtubei/v1/player?key=${session.apiKey}&prettyPrint=false`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "User-Agent": UA,
-        Cookie: cookieStr,
+        Cookie: session.cookies,
+        "X-YouTube-Client-Name": "3",
+        "X-YouTube-Client-Version": "19.09.37",
       },
-      body: JSON.stringify({
-        context: {
-          client: {
-            clientName: "ANDROID",
-            clientVersion: "19.09.37",
-            androidSdkVersion: 30,
-            hl: "en",
-            gl: "US",
-          },
-        },
-        videoId,
-      }),
+      body: JSON.stringify(body),
     }
   );
 
-  if (!playerRes.ok) {
-    console.log("[v0] ANDROID player API status:", playerRes.status);
-    throw new Error("YouTube API request failed");
+  if (!res.ok) {
+    console.log("[v0] Strategy 2: API returned", res.status);
+    return null;
   }
 
-  const player = await playerRes.json();
-  const status = player?.playabilityStatus?.status;
-  console.log("[v0] Playability:", status);
+  const data = await res.json();
+  const status = data?.playabilityStatus?.status;
+  console.log("[v0] Strategy 2: playability =", status);
 
   if (status !== "OK") {
-    throw new Error(
-      player?.playabilityStatus?.reason || "Video is not playable"
+    console.log(
+      "[v0] Strategy 2: reason =",
+      data?.playabilityStatus?.reason ?? "(none)"
     );
+    return null;
   }
 
   const tracks: CaptionTrack[] | undefined =
-    player?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+    data?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
 
   if (!tracks || tracks.length === 0) {
-    throw new Error("No caption tracks available for this video");
+    console.log("[v0] Strategy 2: No tracks in response");
+    return null;
   }
 
   console.log(
-    "[v0] Tracks:",
-    tracks.map((t) => `${t.languageCode}(${t.kind || "manual"})`).join(", ")
+    "[v0] Strategy 2: Found",
+    tracks.length,
+    "tracks:",
+    tracks.map((t) => `${t.languageCode}(${t.kind ?? "manual"})`).join(", ")
+  );
+  return tracks;
+}
+
+// ─── Strategy 3: WEB Innertube (different client) ──────────
+
+async function fetchTracksViaWebInnertube(
+  videoId: string,
+  session: PageSession
+): Promise<CaptionTrack[] | null> {
+  console.log("[v0] Strategy 3: WEB Innertube player API");
+
+  const body = {
+    context: {
+      client: {
+        clientName: "WEB",
+        clientVersion: "2.20241120.01.00",
+        hl: "en",
+        gl: "US",
+        ...(session.visitorData
+          ? { visitorData: session.visitorData }
+          : {}),
+      },
+    },
+    videoId,
+  };
+
+  const res = await fetch(
+    `https://www.youtube.com/youtubei/v1/player?key=${session.apiKey}&prettyPrint=false`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": UA,
+        Cookie: session.cookies,
+      },
+      body: JSON.stringify(body),
+    }
   );
 
-  // 3. Pick the best track
-  let track =
-    tracks.find((t) => t.languageCode === lang && t.kind !== "asr") ??
-    tracks.find((t) => t.languageCode === lang) ??
-    tracks.find((t) => t.languageCode.startsWith(lang) && t.kind !== "asr") ??
-    tracks.find((t) => t.languageCode.startsWith(lang));
+  if (!res.ok) return null;
 
-  // If no English, pick first manual, then first ASR
-  if (!track) {
-    track =
-      tracks.find((t) => t.kind !== "asr") ?? tracks[0];
+  const data = await res.json();
+  if (data?.playabilityStatus?.status !== "OK") {
+    console.log("[v0] Strategy 3: status =", data?.playabilityStatus?.status);
+    return null;
   }
 
-  const chosenLang = track.languageCode;
-  console.log("[v0] Selected track:", chosenLang, track.kind || "manual");
+  const tracks =
+    data?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+  if (!tracks || tracks.length === 0) return null;
 
-  // 4. Fetch caption data
-  const captionRes = await fetch(track.baseUrl, {
-    headers: { "User-Agent": UA, Cookie: cookieStr },
+  console.log(
+    "[v0] Strategy 3: Found",
+    tracks.length,
+    "tracks:",
+    tracks.map((t: CaptionTrack) => `${t.languageCode}(${t.kind ?? "manual"})`).join(", ")
+  );
+  return tracks;
+}
+
+// ─── Fetch caption XML from a track URL ────────────────────
+
+async function fetchCaptionXml(
+  track: CaptionTrack,
+  session: PageSession
+): Promise<string> {
+  const url = track.baseUrl.replace(/&fmt=\w+/, "");
+  console.log("[v0] Fetching caption XML, lang =", track.languageCode);
+
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent": UA,
+      Cookie: session.cookies,
+    },
   });
-  if (!captionRes.ok) {
-    throw new Error(`Caption fetch failed: ${captionRes.status}`);
-  }
 
-  const xml = await captionRes.text();
-  console.log("[v0] Caption data length:", xml.length);
+  if (!res.ok) throw new Error(`Caption fetch failed: ${res.status}`);
+  const xml = await res.text();
+  console.log("[v0] Caption XML length:", xml.length);
 
   if (xml.length === 0) {
     throw new Error("Caption URL returned empty data");
   }
+  return xml;
+}
 
-  const entries = parseCaptions(xml);
-  console.log("[v0] Parsed entries:", entries.length);
+// ─── Main orchestrator ─────────────────────────────────────
 
-  if (entries.length === 0) {
-    throw new Error("Could not parse caption data");
+async function fetchTranscript(
+  videoId: string,
+  lang = "en"
+): Promise<{ entries: CaptionEntry[]; language: string }> {
+  const session = await getPageSession(videoId);
+
+  // Try strategies in order: HTML → ANDROID → WEB
+  const strategies = [
+    () => extractTracksFromHtml(session.html),
+    () => fetchTracksViaInnertube(videoId, session),
+    () => fetchTracksViaWebInnertube(videoId, session),
+  ];
+
+  for (let i = 0; i < strategies.length; i++) {
+    const tracks = await strategies[i]();
+    if (!tracks) continue;
+
+    const track = pickTrack(tracks, lang);
+    console.log("[v0] Using track from strategy", i + 1, ":", track.languageCode);
+
+    try {
+      const xml = await fetchCaptionXml(track, session);
+      const entries = parseCaptions(xml);
+      console.log("[v0] Parsed", entries.length, "entries");
+
+      if (entries.length > 0) {
+        return { entries, language: track.languageCode };
+      }
+      console.log("[v0] Strategy", i + 1, "returned XML but 0 parsed entries, trying next...");
+    } catch (e) {
+      console.log(
+        "[v0] Strategy",
+        i + 1,
+        "caption fetch failed:",
+        e instanceof Error ? e.message : e,
+        "— trying next..."
+      );
+    }
   }
 
-  return { entries, language: chosenLang };
+  throw new Error("No caption tracks available for this video");
 }
 
 // ─── Route handler ─────────────────────────────────────────
@@ -308,7 +472,14 @@ export async function GET(request: NextRequest) {
       /* ignore */
     }
 
-    console.log("[v0] Done:", entries.length, "segments,", paragraphs.length, "paragraphs, lang:", language);
+    console.log(
+      "[v0] Success:",
+      entries.length,
+      "segments,",
+      paragraphs.length,
+      "paragraphs, lang:",
+      language
+    );
 
     return NextResponse.json({
       videoId,

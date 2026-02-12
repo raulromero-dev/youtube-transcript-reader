@@ -2,15 +2,16 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, BookOpen } from "lucide-react";
+import { ArrowRight, BookOpen, Sparkles } from "lucide-react";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 
 interface PasteInputProps {
   onSubmit: (url: string) => void;
+  onDemo: () => void;
   isLoading: boolean;
 }
 
-export function PasteInput({ onSubmit, isLoading }: PasteInputProps) {
+export function PasteInput({ onSubmit, onDemo, isLoading }: PasteInputProps) {
   const [url, setUrl] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [hasPasted, setHasPasted] = useState(false);
@@ -148,15 +149,24 @@ export function PasteInput({ onSubmit, isLoading }: PasteInputProps) {
         </div>
       </motion.form>
 
-      {/* Subtle hint */}
-      <motion.p
-        className="mt-6 text-sm text-muted-foreground/60"
+      {/* Demo + hint */}
+      <motion.div
+        className="mt-6 flex flex-col items-center gap-2"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1, duration: 0.8 }}
       >
-        Works with any video that has captions enabled
-      </motion.p>
+        <button
+          onClick={onDemo}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+          Try a demo transcript
+        </button>
+        <p className="text-xs text-muted-foreground/40">
+          Works with any video that has captions enabled
+        </p>
+      </motion.div>
     </motion.div>
   );
 }

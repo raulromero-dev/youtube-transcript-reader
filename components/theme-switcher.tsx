@@ -1,13 +1,13 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Sun, Moon, BookOpen } from "lucide-react";
 
 const themes = [
-  { id: "paper", label: "Paper", icon: BookOpen },
-  { id: "light", label: "Light", icon: Sun },
-  { id: "dark", label: "Dark", icon: Moon },
+  { id: "paper", icon: BookOpen, label: "Paper" },
+  { id: "light", icon: Sun, label: "Light" },
+  { id: "dark", icon: Moon, label: "Dark" },
 ] as const;
 
 export function ThemeSwitcher() {
@@ -15,34 +15,31 @@ export function ThemeSwitcher() {
 
   return (
     <div className="flex items-center rounded-lg border border-border bg-card p-0.5">
-      {themes.map(({ id, label, icon: Icon }) => {
+      {themes.map(({ id, icon: Icon, label }) => {
         const active = theme === id;
         return (
           <button
             key={id}
             onClick={() => setTheme(id)}
-            className={`relative flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors ${
+            className={`relative flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
               active
                 ? "text-foreground"
                 : "text-muted-foreground hover:text-foreground"
             }`}
             aria-label={`Switch to ${label} theme`}
           >
-            <AnimatePresence>
-              {active && (
-                <motion.div
-                  layoutId="theme-pill"
-                  className="absolute inset-0 rounded-md bg-accent"
-                  transition={{
-                    type: "spring",
-                    stiffness: 400,
-                    damping: 30,
-                  }}
-                />
-              )}
-            </AnimatePresence>
-            <Icon className="relative z-10 h-3 w-3" />
-            <span className="relative z-10 hidden sm:inline">{label}</span>
+            {active && (
+              <motion.div
+                layoutId="theme-pill"
+                className="absolute inset-0 rounded-md bg-accent"
+                transition={{
+                  type: "spring",
+                  stiffness: 400,
+                  damping: 30,
+                }}
+              />
+            )}
+            <Icon className="relative z-10 h-3.5 w-3.5" />
           </button>
         );
       })}

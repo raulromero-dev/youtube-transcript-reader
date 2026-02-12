@@ -6,6 +6,7 @@ import { PasteInput } from "@/components/paste-input";
 import { LoadingState } from "@/components/loading-state";
 import { TranscriptReader } from "@/components/transcript-reader";
 import { ErrorState } from "@/components/error-state";
+import { DEMO_TRANSCRIPT } from "@/lib/demo-transcript";
 
 type AppState = "input" | "loading" | "reading" | "error";
 
@@ -42,7 +43,6 @@ export default function Home() {
         throw new Error(data.error || "Failed to fetch transcript");
       }
 
-      // Small delay to let the loading animation feel intentional
       await new Promise((resolve) => setTimeout(resolve, 800));
 
       setTranscriptData(data);
@@ -55,6 +55,14 @@ export default function Home() {
       );
       setState("error");
     }
+  }, []);
+
+  const loadDemo = useCallback(() => {
+    setState("loading");
+    setTimeout(() => {
+      setTranscriptData(DEMO_TRANSCRIPT);
+      setState("reading");
+    }, 1200);
   }, []);
 
   const goBack = useCallback(() => {
@@ -70,6 +78,7 @@ export default function Home() {
           <PasteInput
             key="input"
             onSubmit={fetchTranscript}
+            onDemo={loadDemo}
             isLoading={false}
           />
         )}
