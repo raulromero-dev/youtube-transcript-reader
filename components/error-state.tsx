@@ -11,23 +11,23 @@ interface ErrorStateProps {
 export function ErrorState({ message, onBack }: ErrorStateProps) {
   return (
     <motion.div
-      className="landing-bg flex min-h-dvh flex-col items-center justify-center px-6"
+      className="flex min-h-dvh flex-col items-center justify-center px-6"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.4 }}
     >
       <motion.div
-        className="flex h-16 w-16 items-center justify-center rounded-2xl border border-landing-border bg-landing-subtle"
+        className="flex h-16 w-16 items-center justify-center rounded-2xl border border-border bg-card"
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ delay: 0.1, duration: 0.4 }}
       >
-        <AlertCircle className="h-7 w-7 text-landing-muted" />
+        <AlertCircle className="h-7 w-7 text-muted-foreground" />
       </motion.div>
 
       <motion.h2
-        className="mt-6 text-2xl font-semibold text-landing-fg"
+        className="mt-6 font-serif text-2xl font-medium text-foreground"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2, duration: 0.4 }}
@@ -36,7 +36,7 @@ export function ErrorState({ message, onBack }: ErrorStateProps) {
       </motion.h2>
 
       <motion.p
-        className="mt-3 max-w-sm text-center text-base leading-relaxed text-landing-muted"
+        className="mt-3 max-w-sm text-center text-base leading-relaxed text-muted-foreground"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3, duration: 0.4 }}
@@ -46,7 +46,7 @@ export function ErrorState({ message, onBack }: ErrorStateProps) {
 
       <motion.button
         onClick={onBack}
-        className="mt-8 flex items-center gap-2 rounded-lg border border-landing-border bg-landing-card px-5 py-2.5 text-sm text-landing-fg shadow-sm transition-colors hover:bg-landing-subtle"
+        className="mt-8 flex items-center gap-2 rounded-lg border border-border bg-card px-5 py-2.5 text-sm text-foreground shadow-sm transition-colors hover:bg-accent"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4, duration: 0.4 }}
