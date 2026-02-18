@@ -76,14 +76,16 @@ export function PasteInput({ onSubmit, isLoading }: PasteInputProps) {
     >
       {/* Background video — per-theme, replays on switch, bottom 10% cropped */}
       <div className="absolute inset-0 z-0 overflow-hidden">
-        <video
-          ref={handleVideoReady}
-          autoPlay
-          muted
-          playsInline
-          className="absolute inset-0 h-[111%] w-full object-cover"
-          src={videoSrc}
-        />
+        {videoSrc && (
+          <video
+            ref={handleVideoReady}
+            autoPlay
+            muted
+            playsInline
+            className="absolute inset-0 h-[111%] w-full object-cover"
+            src={videoSrc}
+          />
+        )}
         {/* Overlay — 85% opaque, uses theme background for tinting */}
         <div className="absolute inset-0 bg-background/85" />
       </div>
