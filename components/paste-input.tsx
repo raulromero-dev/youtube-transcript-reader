@@ -75,7 +75,7 @@ export function PasteInput({ onSubmit, isLoading }: PasteInputProps) {
     >
       {/* Background video — per-theme, replays on switch, bottom 10% cropped */}
       <div className="absolute inset-0 z-0 overflow-hidden">
-        {videoSrc && (
+        {mounted && videoSrc && (
           <video
             ref={handleVideoReady}
             autoPlay
