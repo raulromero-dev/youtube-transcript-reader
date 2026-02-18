@@ -73,7 +73,7 @@ export default function Home() {
 
   return (
     <main className="min-h-dvh">
-      <AnimatePresence mode="popLayout">
+      <AnimatePresence mode="wait">
         {state === "input" && (
           <PasteInput
             key="input"

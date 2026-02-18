@@ -168,7 +168,7 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
   const [showTimestamps, setShowTimestamps] = useState(true);
   const [copied, setCopied] = useState(false);
   const [showControls, setShowControls] = useState(false);
-  const [viewMode, setViewMode] = useState<"paged" | "scroll">("paged");
+  const [viewMode, setViewMode] = useState<"paged" | "scroll">("scroll");
   const [isFirstReveal, setIsFirstReveal] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef(0);
