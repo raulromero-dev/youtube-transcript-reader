@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { AnimatePresence } from "framer-motion";
+import { useState, useCallback, useEffect } from "react";
+import { motion } from "framer-motion";
 import { PasteInput } from "@/components/paste-input";
 import { LoadingState } from "@/components/loading-state";
 import { TranscriptReader } from "@/components/transcript-reader";
@@ -23,10 +23,24 @@ interface TranscriptData {
 
 export default function Home() {
   const [state, setState] = useState<AppState>("input");
+  const [rendered, setRendered] = useState<AppState>("input");
   const [transcriptData, setTranscriptData] = useState<TranscriptData | null>(
     null
   );
   const [errorMessage, setErrorMessage] = useState("");
+
+  // Two-phase transition: fade out current, then swap and fade in next
+  useEffect(() => {
+    if (state !== rendered) {
+      // Short delay to let current view fade out, then swap
+      const timer = setTimeout(() => {
+        setRendered(state);
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [state, rendered]);
+
+  const isVisible = state === rendered;
 
   const fetchTranscript = useCallback(async (url: string) => {
     console.log("[v0] State transition: input -> loading");
@@ -73,33 +87,34 @@ export default function Home() {
 
   return (
     <main className="min-h-dvh">
-      <AnimatePresence mode="popLayout">
-        {state === "input" && (
+      <motion.div
+        animate={{ opacity: isVisible ? 1 : 0 }}
+        transition={{ duration: 0.2 }}
+        className="min-h-dvh"
+      >
+        {rendered === "input" && (
           <PasteInput
-            key="input"
             onSubmit={fetchTranscript}
             isLoading={false}
           />
         )}
 
-        {state === "loading" && <LoadingState key="loading" />}
+        {rendered === "loading" && <LoadingState />}
 
-        {state === "reading" && transcriptData && (
+        {rendered === "reading" && transcriptData && (
           <TranscriptReader
-            key="reading"
             data={transcriptData}
             onBack={goBack}
           />
         )}
 
-        {state === "error" && (
+        {rendered === "error" && (
           <ErrorState
-            key="error"
             message={errorMessage}
             onBack={goBack}
           />
         )}
-      </AnimatePresence>
+      </motion.div>
     </main>
   );
 }

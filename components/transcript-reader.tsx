@@ -88,6 +88,8 @@ function getCumulativeDelay(
 /* ------------------------------------------------------------------ */
 /*  Paragraph with staggered word reveal                              */
 /* ------------------------------------------------------------------ */
+const ANIMATED_PARAGRAPH_COUNT = 3;
+
 function RevealParagraph({
   paragraph,
   paragraphIndex,
@@ -105,17 +107,12 @@ function RevealParagraph({
 }) {
   const words = useMemo(() => paragraph.text.split(/\s+/), [paragraph.text]);
 
-  if (!isFirstReveal) {
+  // Only animate the first 3 paragraphs on initial reveal, rest appear immediately
+  const shouldAnimate = isFirstReveal && paragraphIndex < ANIMATED_PARAGRAPH_COUNT;
+
+  if (!shouldAnimate) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{
-          delay: 0.05 + paragraphIndex * 0.08,
-          duration: 0.4,
-          ease: [0.22, 1, 0.36, 1],
-        }}
-      >
+      <div>
         {showTimestamps && (
           <span className="mb-2 inline-block font-sans text-xs uppercase tracking-widest text-muted-foreground/60">
             {paragraph.timestamp}
@@ -124,7 +121,7 @@ function RevealParagraph({
         <p className={`font-sans leading-relaxed text-foreground ${fontSizeClass}`}>
           {paragraph.text}
         </p>
-      </motion.div>
+      </div>
     );
   }
 
@@ -168,7 +165,7 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
   const [showTimestamps, setShowTimestamps] = useState(true);
   const [copied, setCopied] = useState(false);
   const [showControls, setShowControls] = useState(false);
-  const [viewMode, setViewMode] = useState<"paged" | "scroll">("paged");
+  const [viewMode, setViewMode] = useState<"paged" | "scroll">("scroll");
   const [isFirstReveal, setIsFirstReveal] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef(0);
@@ -180,12 +177,14 @@ export function TranscriptReader({ data, onBack }: TranscriptReaderProps) {
     (currentPage + 1) * PARAGRAPHS_PER_PAGE
   );
 
-  // After the first page reveal completes, disable the fancy word animation
+  // After the first 3 paragraphs animate, disable the fancy word animation for the rest
   useEffect(() => {
     if (isFirstReveal) {
-      const lastParaDelay = getCumulativeDelay(currentParagraphs, currentParagraphs.length - 1, 0.3);
-      const lastParaWords = currentParagraphs[currentParagraphs.length - 1]?.text.split(/\s+/).length ?? 0;
-      const totalDuration = (lastParaDelay + lastParaWords * 0.03 + 0.45 + 0.5) * 1000;
+      const animatedParas = Math.min(ANIMATED_PARAGRAPH_COUNT, currentParagraphs.length);
+      const lastAnimatedIndex = animatedParas - 1;
+      const lastParaDelay = getCumulativeDelay(currentParagraphs, lastAnimatedIndex, 0.3);
+      const lastParaWords = currentParagraphs[lastAnimatedIndex]?.text.split(/\s+/).length ?? 0;
+      const totalDuration = (lastParaDelay + lastParaWords * 0.03 + 0.45 + 0.2) * 1000;
       const timer = setTimeout(() => setIsFirstReveal(false), totalDuration);
       return () => clearTimeout(timer);
     }

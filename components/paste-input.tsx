@@ -71,12 +71,11 @@ export function PasteInput({ onSubmit, isLoading }: PasteInputProps) {
       className="relative flex min-h-dvh flex-col items-center justify-center px-6 overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0, y: -40, scale: 0.98 }}
-      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      transition={{ duration: 0.5 }}
     >
       {/* Background video — per-theme, replays on switch, bottom 10% cropped */}
       <div className="absolute inset-0 z-0 overflow-hidden">
-        {videoSrc && (
+        {mounted && videoSrc && (
           <video
             ref={handleVideoReady}
             autoPlay
