@@ -71,8 +71,7 @@ export function PasteInput({ onSubmit, isLoading }: PasteInputProps) {
       className="relative flex min-h-dvh flex-col items-center justify-center px-6 overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.3 }}
+      transition={{ duration: 0.5 }}
     >
       {/* Background video — per-theme, replays on switch, bottom 10% cropped */}
       <div className="absolute inset-0 z-0 overflow-hidden">
