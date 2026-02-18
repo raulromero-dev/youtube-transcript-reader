@@ -11,32 +11,35 @@ interface PasteInputProps {
   isLoading: boolean;
 }
 
+const VIDEO_FOR_THEME: Record<string, string> = {
+  paper: "/book-animation-paper.mp4",
+  light: "/book-animation-light.mp4",
+  dark: "/book-animation.mp4",
+};
+
 export function PasteInput({ onSubmit, isLoading }: PasteInputProps) {
   const [url, setUrl] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [hasPasted, setHasPasted] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const { theme } = useTheme();
+  const { resolvedTheme } = useTheme();
 
-  const videoForTheme: Record<string, string> = {
-    paper: "/book-animation-paper.mp4",
-    light: "/book-animation-light.mp4",
-    dark: "/book-animation.mp4",
-  };
-
-  const videoSrc = videoForTheme[theme ?? "paper"] ?? videoForTheme.paper;
+  // Only compute video src after mount so we never flash the wrong video
+  const videoSrc = mounted ? (VIDEO_FOR_THEME[resolvedTheme ?? "paper"] ?? VIDEO_FOR_THEME.paper) : "";
 
   useEffect(() => {
+    setMounted(true);
     const timer = setTimeout(() => {
       inputRef.current?.focus();
     }, 800);
     return () => clearTimeout(timer);
   }, []);
 
-  // Replay video from start whenever theme (and thus video src) changes
+  // Replay video from start whenever the resolved theme changes
   useEffect(() => {
-    if (videoRef.current) {
+    if (videoRef.current && videoSrc) {
       videoRef.current.load();
       videoRef.current.playbackRate = 0.8;
       videoRef.current.play().catch(() => {});
