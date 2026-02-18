@@ -29,29 +29,38 @@ export default function Home() {
   const [errorMessage, setErrorMessage] = useState("");
 
   const fetchTranscript = useCallback(async (url: string) => {
+    console.log("[v0] State transition: input -> loading");
     setState("loading");
     setErrorMessage("");
 
     try {
+      console.log("[v0] Fetching transcript for:", url);
       const res = await fetch(
         `/api/transcript?url=${encodeURIComponent(url)}`
       );
+      console.log("[v0] Fetch response status:", res.status);
       const data = await res.json();
+      console.log("[v0] Fetch response data keys:", Object.keys(data));
 
       if (!res.ok) {
         throw new Error(data.error || "Failed to fetch transcript");
       }
 
+      console.log("[v0] Transcript received, paragraphs:", data.paragraphs?.length);
+
       await new Promise((resolve) => setTimeout(resolve, 800));
 
       setTranscriptData(data);
+      console.log("[v0] State transition: loading -> reading");
       setState("reading");
     } catch (err) {
+      console.log("[v0] Fetch error:", err instanceof Error ? err.message : err);
       setErrorMessage(
         err instanceof Error
           ? err.message
           : "Something went wrong. Please try again."
       );
+      console.log("[v0] State transition: loading -> error");
       setState("error");
     }
   }, []);
@@ -64,7 +73,7 @@ export default function Home() {
 
   return (
     <main className="min-h-dvh">
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="popLayout">
         {state === "input" && (
           <PasteInput
             key="input"
